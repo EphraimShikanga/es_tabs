@@ -1,4 +1,14 @@
 chrome.tabs.onCreated.addListener(async () => {
+    await manageTabs();
+});
+
+chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo) => {
+    if (changeInfo.status === 'complete') {
+        await manageTabs();
+    }
+});
+
+async function manageTabs() {
     try {
         const tabs = await chrome.tabs.query({});
 
@@ -46,4 +56,4 @@ chrome.tabs.onCreated.addListener(async () => {
     } catch (error) {
         console.error("Error managing tabs: ", error);
     }
-});
+}
