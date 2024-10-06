@@ -13,10 +13,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
     await cleanupGroups(tabId);
+    delete tabAccessTimes[tabId];
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
     try {
+        tabAccessTimes[activeInfo.tabId] = Date.now();
         const tab = await chrome.tabs.get(activeInfo.tabId);
 
         if (tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
@@ -168,3 +170,59 @@ async function cleanupGroups(closedTabId: number) {
         console.error("Error cleaning up groups: ", error);
     }
 }
+
+
+const tabAccessTimes: { [tabId: number]: number } = {};
+const INACTIVITY_THRESHOLD = 10 * 1000; // 5 minutes
+
+setInterval(async () => {
+    console.log("Checking for tabs to hibernate...");
+    const now = Date.now();
+
+    try {
+        const tabs = await chrome.tabs.query({});
+        const groupedTabs: { [groupId: number]: chrome.tabs.Tab[] } = {};
+        const ungroupedTabs: chrome.tabs.Tab[] = [];
+
+        for (const tab of tabs) {
+            if (tab.url && tab.url.startsWith("chrome://")) {
+                continue;
+            }
+            if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+                if (!groupedTabs[tab.groupId]) {
+                    groupedTabs[tab.groupId] = [];
+                }
+                groupedTabs[tab.groupId].push(tab);
+            } else {
+                ungroupedTabs.push(tab);
+            }
+        }
+
+        // Handle grouped tabs
+        for (const groupId in groupedTabs) {
+            const groupTabs = groupedTabs[groupId];
+            if (groupTabs.length > 1) {
+                for (const tab of groupTabs) {
+                    const lastAccessTime = tabAccessTimes[tab.id!];
+                    if (lastAccessTime && now - lastAccessTime > INACTIVITY_THRESHOLD) {
+                        console.log(`Hibernating grouped tab: ${tab.id}`);
+                        await chrome.tabs.discard(tab.id!);
+                    }
+                }
+            }
+        }
+
+        for (const tab of ungroupedTabs) {
+            const lastAccessTime = tabAccessTimes[tab.id!];
+            if (lastAccessTime && now - lastAccessTime > INACTIVITY_THRESHOLD) {
+                console.log(`Hibernating ungrouped tab: ${tab.id}`);
+                await chrome.tabs.discard(tab.id!);
+            }
+        }
+
+    } catch (error) {
+        console.error("Error during tab hibernation check:", error);
+    }
+}, 30 * 1000);
+
+
