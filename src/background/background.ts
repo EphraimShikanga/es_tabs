@@ -1,23 +1,49 @@
 chrome.tabs.onCreated.addListener(async () => {
     try {
         const tabs = await chrome.tabs.query({});
-        console.log("tabs: ", tabs);
+        
+        if (tabs.length > 3) {
+            const domainMap: { [domain: string]: chrome.tabs.Tab[] } = {};
 
-        if (tabs.length > 5) {
+            tabs.forEach((tab) => {
+                const url = tab.url;
+                if (url) {
+                    const domain = new URL(url).hostname;
 
-            const sortedTabs = tabs.sort((a, b) => (a.id && b.id ? a.id - b.id : 0));
+                    if (!domainMap[domain]) {
+                        domainMap[domain] = [];
+                    }
+                    domainMap[domain].push(tab);
+                }
+            });
 
-            // group tabs by domain
+            for (const domain in domainMap) {
+                const domainTabs = domainMap[domain];
 
-            const excessTabs = tabs.length - 5;
+                if (domainTabs.length > 1) {
+                    const tabIds = domainTabs.map((tab) => tab.id).filter((id): id is number => id !== undefined);
 
-            for (let i = 0; i < excessTabs; i++) {
-                if (sortedTabs[i].id !== undefined) {
-                    await chrome.tabs.remove(sortedTabs[i].id!);
+                    const groupId = await chrome.tabs.group({ tabIds });
+
+                    await chrome.tabGroups.update(groupId, { title: domain });
+                }
+            }
+
+            if (tabs.length > 10) {
+                const excessTabs = tabs.length - 10;
+
+                // Sort tabs by their ID (this generally correlates with creation time)
+                const sortedTabs = tabs.sort((a, b) => (a.id && b.id ? a.id - b.id : 0));
+
+                // Close the older excess tabs
+                for (let i = 0; i < excessTabs; i++) {
+                    if (sortedTabs[i].id !== undefined) {
+                        await chrome.tabs.remove(sortedTabs[i].id!);
+                    }
                 }
             }
         }
     } catch (error) {
-        console.error("Error closing older tabs: ", error);
+        console.error("Error managing tabs: ", error);
     }
 });
