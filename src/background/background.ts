@@ -1,10 +1,11 @@
-chrome.tabs.onCreated.addListener(async () => {
-    await manageTabs();
+chrome.tabs.onCreated.addListener(async (tab) => {
+    await collapseAllGroups();
+    await manageTabs(tab.id);
 });
 
-chrome.tabs.onUpdated.addListener(async (_, changeInfo) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, ) => {
     if (changeInfo.status === 'complete') {
-        await manageTabs();
+        await manageTabs(tabId);
     }
 });
 
@@ -13,48 +14,66 @@ chrome.tabs.onRemoved.addListener(async () => {
     await cleanupGroups();
 });
 
-async function manageTabs() {
+async function collapseAllGroups() {
+    try {
+        const groups = await chrome.tabGroups.query({});
+        for (const group of groups) {
+            await chrome.tabGroups.update(group.id, { collapsed: true });
+        }
+    } catch (error) {
+        console.error("Error collapsing groups: ", error);
+    }
+}
+
+async function manageTabs(newTabId?: number) {
     try {
         const tabs = await chrome.tabs.query({});
+        const domainMap: { [domain: string]: chrome.tabs.Tab[] } = {};
 
-        if (tabs.length > 3) {
-            const domainMap: { [domain: string]: chrome.tabs.Tab[] } = {};
+        tabs.forEach((tab) => {
+            const url = tab.url;
+            if (url) {
+                const domain = new URL(url).hostname.replace(/^www\./, '');
 
-            tabs.forEach((tab) => {
-                const url = tab.url;
-                if (url) {
-                    const domain = new URL(url).hostname.replace(/^www\./, '');
-
-                    if (!domainMap[domain]) {
-                        domainMap[domain] = [];
-                    }
-                    domainMap[domain].push(tab);
+                if (!domainMap[domain]) {
+                    domainMap[domain] = [];
                 }
-            });
-
-            for (const domain in domainMap) {
-                const domainTabs = domainMap[domain];
-
-                if (domainTabs.length > 1) {
-                    const tabIds = domainTabs.map((tab) => tab.id).filter((id): id is number => id !== undefined);
-
-                    const groupId = await chrome.tabs.group({ tabIds });
-
-                    await chrome.tabGroups.update(groupId, { title: domain, collapsed: true });
-                }
+                domainMap[domain].push(tab);
             }
+        });
 
-            if (tabs.length > 10) {
-                const excessTabs = tabs.length - 10;
+        let expandedGroupId: number | null = null;
 
-                // Sort tabs by their ID (this generally correlates with creation time)
-                const sortedTabs = tabs.sort((a, b) => (a.id && b.id ? a.id - b.id : 0));
+        for (const domain in domainMap) {
+            const domainTabs = domainMap[domain];
 
-                // Close the older excess tabs
-                for (let i = 0; i < excessTabs; i++) {
-                    if (sortedTabs[i].id !== undefined) {
-                        await chrome.tabs.remove(sortedTabs[i].id!);
-                    }
+            if (domainTabs.length > 1) {
+                const tabIds = domainTabs.map((tab) => tab.id).filter((id): id is number => id !== undefined);
+
+                const groupId = await chrome.tabs.group({ tabIds });
+
+                // If the new tab belongs to this group, expand it
+                if (newTabId && tabIds.includes(newTabId)) {
+                    expandedGroupId = groupId;
+                }
+
+                await chrome.tabGroups.update(groupId, { title: domain, collapsed: true });
+            }
+        }
+
+        // Expand the group with the new tab
+        if (expandedGroupId !== null) {
+            await chrome.tabGroups.update(expandedGroupId, { collapsed: false });
+        }
+
+        if (tabs.length > 10) {
+            const excessTabs = tabs.length - 10;
+
+            const sortedTabs = tabs.sort((a, b) => (a.id && b.id ? a.id - b.id : 0));
+
+            for (let i = 0; i < excessTabs; i++) {
+                if (sortedTabs[i].id !== undefined) {
+                    await chrome.tabs.remove(sortedTabs[i].id!);
                 }
             }
         }
@@ -65,10 +84,7 @@ async function manageTabs() {
 
 async function cleanupGroups() {
     try {
-        // const groups = await chrome.tabGroups.query({});
         const tabs = await chrome.tabs.query({});
-
-        // Map to keep track of tabs in each group
         const groupTabCount: { [groupId: number]: chrome.tabs.Tab[] } = {};
 
         tabs.forEach(tab => {
@@ -80,13 +96,11 @@ async function cleanupGroups() {
             }
         });
 
-        // Loop through each group and check if it only contains one tab
         for (const groupId in groupTabCount) {
             const groupTabs = groupTabCount[parseInt(groupId)];
             if (groupTabs.length === 1) {
                 const tabId = groupTabs[0].id;
 
-                // Ungroup the tab and remove the group
                 if (tabId !== undefined) {
                     await chrome.tabs.ungroup(tabId);
                 }
