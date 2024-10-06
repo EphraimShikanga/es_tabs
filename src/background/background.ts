@@ -3,22 +3,23 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     await manageTabs(tab.id);
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, ) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     if (changeInfo.status === 'complete') {
         await manageTabs(tabId);
     }
 });
 
-chrome.tabs.onRemoved.addListener(async () => {
-    await manageTabs();
-    await cleanupGroups();
+chrome.tabs.onRemoved.addListener(async (tabId, ) => {
+    await cleanupGroups(tabId);
 });
 
-async function collapseAllGroups() {
+async function collapseAllGroups(exceptGroupId?: number) {
     try {
         const groups = await chrome.tabGroups.query({});
         for (const group of groups) {
-            await chrome.tabGroups.update(group.id, { collapsed: true });
+            if (group.id !== exceptGroupId) {
+                await chrome.tabGroups.update(group.id, { collapsed: true });
+            }
         }
     } catch (error) {
         console.error("Error collapsing groups: ", error);
@@ -52,7 +53,6 @@ async function manageTabs(newTabId?: number) {
 
                 const groupId = await chrome.tabs.group({ tabIds });
 
-                // If the new tab belongs to this group, expand it
                 if (newTabId && tabIds.includes(newTabId)) {
                     expandedGroupId = groupId;
                 }
@@ -61,7 +61,6 @@ async function manageTabs(newTabId?: number) {
             }
         }
 
-        // Expand the group with the new tab
         if (expandedGroupId !== null) {
             await chrome.tabGroups.update(expandedGroupId, { collapsed: false });
         }
@@ -82,10 +81,11 @@ async function manageTabs(newTabId?: number) {
     }
 }
 
-async function cleanupGroups() {
+async function cleanupGroups(closedTabId: number) {
     try {
         const tabs = await chrome.tabs.query({});
         const groupTabCount: { [groupId: number]: chrome.tabs.Tab[] } = {};
+        let groupToExpand: number | null = null;
 
         tabs.forEach(tab => {
             if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
@@ -93,18 +93,17 @@ async function cleanupGroups() {
                     groupTabCount[tab.groupId] = [];
                 }
                 groupTabCount[tab.groupId].push(tab);
+
+                // Check if the closed tab was in this group
+                if (tab.id === closedTabId) {
+                    groupToExpand = tab.groupId;
+                }
             }
         });
 
-        for (const groupId in groupTabCount) {
-            const groupTabs = groupTabCount[parseInt(groupId)];
-            if (groupTabs.length === 1) {
-                const tabId = groupTabs[0].id;
-
-                if (tabId !== undefined) {
-                    await chrome.tabs.ungroup(tabId);
-                }
-            }
+        if (groupToExpand !== null) {
+            await collapseAllGroups(groupToExpand);
+            await chrome.tabGroups.update(groupToExpand, { collapsed: false });
         }
     } catch (error) {
         console.error("Error cleaning up groups: ", error);
