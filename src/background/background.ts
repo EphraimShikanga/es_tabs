@@ -90,7 +90,7 @@ async function manageTabs(newTabId?: number) {
 
         tabs.forEach((tab) => {
             const url = tab.url;
-            if (url) {
+            if (url && !url.startsWith("chrome://")) {
                 const domain = new URL(url).hostname.replace(/^www\./, '');
 
                 if (!domainMap[domain]) {
