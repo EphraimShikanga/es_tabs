@@ -1,3 +1,5 @@
+import ColorEnum = chrome.tabGroups.ColorEnum;
+
 chrome.tabs.onCreated.addListener(async (tab) => {
     await collapseAllGroups();
     await manageTabs(tab.id);
@@ -52,6 +54,33 @@ async function collapseAllGroups(exceptGroupId?: number) {
 }
 
 
+const availableColors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
+const usedColors = new Set<string>();
+
+async function getColorForDomain(domain: string): Promise<string> {
+    const storedColors = await chrome.storage.local.get('domainColors');
+    const domainColors = storedColors.domainColors || {};
+
+    if (domainColors[domain]) {
+        return domainColors[domain];
+    }
+
+    const unusedColors = availableColors.filter(color => !usedColors.has(color));
+
+    if (unusedColors.length === 0) {
+        usedColors.clear();
+        unusedColors.push(...availableColors);
+    }
+
+    const randomColor = unusedColors[Math.floor(Math.random() * unusedColors.length)];
+    usedColors.add(randomColor);
+
+    domainColors[domain] = randomColor;
+    await chrome.storage.local.set({ domainColors });
+
+    return randomColor;
+}
+
 async function manageTabs(newTabId?: number) {
     try {
         const tabs = await chrome.tabs.query({});
@@ -83,8 +112,7 @@ async function manageTabs(newTabId?: number) {
                     expandedGroupId = groupId;
                 }
 
-                await chrome.tabGroups.update(groupId, {title: domain, collapsed: true});
-            }
+                await chrome.tabGroups.update(groupId, { title: domain, collapsed: true, color: await getColorForDomain(domain) as ColorEnum | undefined });            }
         }
 
         if (expandedGroupId !== null) {

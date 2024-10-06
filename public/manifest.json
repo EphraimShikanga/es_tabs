@@ -7,7 +7,7 @@
     "default_popup": "index.html"
   },
   "permissions": [
-    "tabs", "tabGroups"
+    "tabs", "tabGroups", "storage"
   ],
   "background": {
     "service_worker": "background.js"
