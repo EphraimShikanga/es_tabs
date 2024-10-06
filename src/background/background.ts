@@ -1,14 +1,14 @@
 chrome.tabs.onCreated.addListener(async () => {
     try {
         const tabs = await chrome.tabs.query({});
-        
+
         if (tabs.length > 3) {
             const domainMap: { [domain: string]: chrome.tabs.Tab[] } = {};
 
             tabs.forEach((tab) => {
                 const url = tab.url;
                 if (url) {
-                    const domain = new URL(url).hostname;
+                    const domain = new URL(url).hostname.replace(/^www\./, '');
 
                     if (!domainMap[domain]) {
                         domainMap[domain] = [];
@@ -25,7 +25,7 @@ chrome.tabs.onCreated.addListener(async () => {
 
                     const groupId = await chrome.tabs.group({ tabIds });
 
-                    await chrome.tabGroups.update(groupId, { title: domain });
+                    await chrome.tabGroups.update(groupId, { title: domain, collapsed: true });
                 }
             }
 
