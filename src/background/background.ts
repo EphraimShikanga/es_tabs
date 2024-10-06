@@ -2,7 +2,7 @@ chrome.tabs.onCreated.addListener(async () => {
     await manageTabs();
 });
 
-chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener(async (_, changeInfo) => {
     if (changeInfo.status === 'complete') {
         await manageTabs();
     }
