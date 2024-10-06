@@ -8,6 +8,11 @@ chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo) => {
     }
 });
 
+chrome.tabs.onRemoved.addListener(async () => {
+    await manageTabs();
+    await cleanupGroups();
+});
+
 async function manageTabs() {
     try {
         const tabs = await chrome.tabs.query({});
@@ -55,5 +60,39 @@ async function manageTabs() {
         }
     } catch (error) {
         console.error("Error managing tabs: ", error);
+    }
+}
+
+async function cleanupGroups() {
+    try {
+        // const groups = await chrome.tabGroups.query({});
+        const tabs = await chrome.tabs.query({});
+
+        // Map to keep track of tabs in each group
+        const groupTabCount: { [groupId: number]: chrome.tabs.Tab[] } = {};
+
+        tabs.forEach(tab => {
+            if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+                if (!groupTabCount[tab.groupId]) {
+                    groupTabCount[tab.groupId] = [];
+                }
+                groupTabCount[tab.groupId].push(tab);
+            }
+        });
+
+        // Loop through each group and check if it only contains one tab
+        for (const groupId in groupTabCount) {
+            const groupTabs = groupTabCount[parseInt(groupId)];
+            if (groupTabs.length === 1) {
+                const tabId = groupTabs[0].id;
+
+                // Ungroup the tab and remove the group
+                if (tabId !== undefined) {
+                    await chrome.tabs.ungroup(tabId);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error cleaning up groups: ", error);
     }
 }
