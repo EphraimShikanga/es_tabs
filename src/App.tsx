@@ -1,14 +1,16 @@
-import { Tabs } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input.tsx";
-import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import {Input} from "@/components/ui/input.tsx";
+import {Search} from "lucide-react";
+import React, {useEffect, useState} from "react";
 import ChromeTab from "@/components/chrome_tab.tsx";
+import {Tabs, TabsHeader,} from "@material-tailwind/react";
+import ExtensionTab from "@/components/extension_tab.tsx";
 
 function App() {
     const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filteredTabs, setFilteredTabs] = useState<chrome.tabs.Tab[]>([]);
     const [displayedTabs, setDisplayedTabs] = useState<chrome.tabs.Tab[]>([]);
+    const [activeTab, setActiveTab] = React.useState("Workspaces");
 
     useEffect(() => {
         setFilteredTabs(tabs.filter((tab) =>
@@ -43,7 +45,7 @@ function App() {
             }
             uniqueTabs.push(tab);
 
-            if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE)  {
+            if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
                 groupIds.add(tab.groupId);
             }
             if (uniqueTabs.length === limit) {
@@ -66,7 +68,7 @@ function App() {
             <div className={"h-full w-full bg-black rounded-lg p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
                 <div className={"flex flex-row items-end w-full justify-between"}>
                     <div className={"bg-white/10 rounded-full flex flex-row items-end pl-2"}>
-                        <Search color="rgb(226 232 240)" size={"24px"} className={"mb-[6px]"} />
+                        <Search color="rgb(226 232 240)" size={"24px"} className={"mb-[6px]"}/>
                         <Input
                             onChange={(event) => setSearchQuery(event.target.value)}
                             id={"search"}
@@ -75,7 +77,8 @@ function App() {
                             className={"placeholder:text-slate-200 pl-2 border-none text-lg text-slate-200 focus-visible:ring-transparent"}
                         />
                     </div>
-                    <div className={"rounded-full h-9 w-12 flex items-center justify-center text-slate-200 bg-white/10"}>
+                    <div
+                        className={"rounded-full h-9 w-12 flex items-center justify-center text-slate-200 bg-white/10"}>
                         <p>
                             {
                                 searchQuery.length < 1
@@ -88,16 +91,76 @@ function App() {
                 <div className="group/tabs flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto scrollbar-webkit">
                     {searchQuery.length < 1
                         ? displayedTabs.map((tab, index) => (
-                            <ChromeTab key={index} tab={tab} />
+                            <ChromeTab key={index} tab={tab}/>
                         ))
                         : filteredTabs.map((tab, index) => (
-                            <ChromeTab key={index} tab={tab} />
+                            <ChromeTab key={index} tab={tab}/>
                         ))}
                 </div>
+                <Tabs value={activeTab}>
+                    <TabsHeader
+                        placeholder=""
+                        onPointerEnterCapture={() => {
+                        }}
+                        onPointerLeaveCapture={() => {
+                        }}
+                        className={"rounded-none border-blue-50 bg-transparent p-0 group/tab"}
+                        indicatorProps={{className: "bg-transparent border-b-2 border-black shadow-none rounded-none",}}
+                    >
+                        <ExtensionTab value={"Workspaces"} activeTab={activeTab}
+                                      onClick={(value) => setActiveTab(value)}/>
+                        <ExtensionTab value={"Groups"} activeTab={activeTab}
+                                      onClick={(value) => setActiveTab(value)}/>
+                        <ExtensionTab value={"Closed"} activeTab={activeTab}
+                                      onClick={(value) => setActiveTab(value)}/>
+                        <ExtensionTab value={"Settings"} activeTab={activeTab}
+                                      onClick={(value) => setActiveTab(value)}/>
 
-                <p>{searchQuery}</p>
+                    </TabsHeader>
+                </Tabs>
 
-                <Tabs defaultValue={""}></Tabs>
+                {/*<Tabs defaultValue={"workspaces"}>*/}
+                {/*    <TabsList*/}
+                {/*        className={" h-10 p-2 w-full flex flex-row grid-cols-4 justify-between bg-transparent rounded-full"}>*/}
+                {/*        <TabsTrigger*/}
+                {/*            value={"workspaces"}*/}
+                {/*            className={`transition-all duration-300 ease-in-out transform p-1 h-8 border border-white/20 hover:bg-gray-100 hover:scale-105 focus-visible:ring focus-visible:ring-blue-200`}*/}
+                {/*        >*/}
+                {/*            <p className={"text-black text-md"}>*/}
+                {/*                Workspaces*/}
+                {/*            </p>*/}
+                {/*        </TabsTrigger>*/}
+
+                {/*        <TabsTrigger*/}
+                {/*            value={"groups"}*/}
+                {/*            className={`transition-all duration-300 ease-in-out transform p-1 h-8 border border-white/20 hover:bg-gray-100 hover:scale-105 focus-visible:ring focus-visible:ring-blue-200`}*/}
+                {/*        >*/}
+                {/*            <p className={"text-slate-800 text-md"}>*/}
+                {/*                Groups*/}
+                {/*            </p>*/}
+                {/*        </TabsTrigger>*/}
+                {/*        <TabsTrigger value={"closed_tabs"} className={" rounded-2xl p-1 h-8 border border-white/20"}>*/}
+                {/*            <p className={" text-slate-800 text-md "}>*/}
+                {/*                Closed Tabs*/}
+                {/*            </p>*/}
+                {/*        </TabsTrigger>*/}
+                {/*        <TabsTrigger value={"settings"} className={" rounded-2xl p-1 h-8 border border-white/20"}>*/}
+                {/*            <p className={" text-slate-800 text-md "}>*/}
+                {/*                Settings*/}
+                {/*            </p>*/}
+                {/*        </TabsTrigger>*/}
+                {/*        /!*<TabsTrigger value={"groups"}>*!/*/}
+                {/*        /!*    Groups*!/*/}
+                {/*        /!*</TabsTrigger>*!/*/}
+                {/*        /!*<TabsTrigger value={"closed_tabs"}>*!/*/}
+                {/*        /!*    Closed Tabs*!/*/}
+                {/*        /!*</TabsTrigger>*!/*/}
+                {/*        /!*<TabsTrigger value={"settings"}>*!/*/}
+                {/*        /!*    Settings*!/*/}
+                {/*        /!*</TabsTrigger>*!/*/}
+                {/*    </TabsList>*/}
+
+                {/*</Tabs>*/}
             </div>
         </div>
     );
