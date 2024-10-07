@@ -53,7 +53,6 @@ function App() {
         return uniqueTabs;
     };
 
-
     return (
         <div
             className={"p-2 h-[500px] w-[388px]"}
