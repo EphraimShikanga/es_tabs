@@ -173,7 +173,7 @@ async function cleanupGroups(closedTabId: number) {
 
 
 const tabAccessTimes: { [tabId: number]: number } = {};
-const INACTIVITY_THRESHOLD = 10 * 1000; // 5 minutes
+const INACTIVITY_THRESHOLD = 10 * 1000;
 
 setInterval(async () => {
     console.log("Checking for tabs to hibernate...");
