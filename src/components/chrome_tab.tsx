@@ -19,13 +19,16 @@ const ChromeTab: React.FC<ChromeTabProps> = ({tab}) => {
 
     return (
         <div onClick={() => handleTabClick(tab)}
-             className="relative min-w-20 w-20 h-20 bg-black/10 rounded-lg flex flex-col items-center justify-center p-1"
+             aria-label={tab.title}
+             className="relative group hover:!opacity-100 group-hover/tabs:opacity-50 min-w-20 w-20 h-20 bg-black/10 rounded-lg flex flex-col items-center justify-center p-1"
         >
-            <p className="text-xs text-slate-200 text-center truncate w-full">{tab.title}</p>
+            <div
+                className="absolute -inset-x-0 -inset-y-0 -z-[2] block rounded-md transition motion-reduce:transition-none group-hover:bg-black/30 group-hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] group-hover:drop-shadow-lg"></div>
+            <p className="cursor-default text-xs text-slate-200 text-center truncate w-full">{tab.title}</p>
             <img
                 src={tab.favIconUrl ? tab.favIconUrl : "log.jpeg"}
                 alt={tab.title}
-                className="w-10 h-10 mt-1"
+                className="transition group-hover:animate-bounce-short w-10 h-10 mt-1"
             />
 
             {tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && (

@@ -14,6 +14,9 @@ export default {
   		'2xl': '1536px'
   	},
   	extend: {
+		animation: {
+			'bounce-short': 'bounce 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) 0.5'
+		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
