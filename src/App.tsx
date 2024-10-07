@@ -43,7 +43,7 @@ function App() {
             }
             uniqueTabs.push(tab);
 
-            if (tab.groupId !== -1) {
+            if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE)  {
                 groupIds.add(tab.groupId);
             }
             if (uniqueTabs.length === limit) {
