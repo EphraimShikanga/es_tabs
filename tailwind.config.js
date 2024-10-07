@@ -63,5 +63,39 @@ export default {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"),
+	  function ({addUtilities}) {
+		const newUtilities = {
+			".scrollbar-thin": {
+				scrollbarWidth: "thin",
+				scrollbarColor: "rgba(101,164,206,255) rgba(0, 0, 0, 0.05)"
+			},
+			".scrollbar-none": {
+				scrollbarWidth: "none"
+			},
+			".scrollbar-webkit": {
+				"&::-webkit-scrollbar": {
+					width: "3px",
+					scrollbarWidth: "thin",
+					borderRadius: "30px",
+					color: "rgba(101,164,206,0.55)",
+					scrollbarColor: "rgba(101,164,206,0.55)"
+				},
+				"&::-webkit-scrollbar-track": {
+					backgroundColor: "rgba(0, 0, 0, 0.1)",
+					borderRadius: "30px",
+				},
+				"&::-webkit-scrollbar-thumb": {
+					backgroundColor: "rgba(0, 0, 0, 0.2)",
+					borderRadius: "30px",
+					border: "0px solid rgba(0, 0, 0, 0.1)"
+				}
+			}
+
+		}
+
+		addUtilities(newUtilities, ["responsive", "hover"])
+		  
+	  }
+  ],
 }

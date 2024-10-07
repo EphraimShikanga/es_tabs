@@ -76,7 +76,7 @@ function App() {
                         <p>{tabs.length}</p>
                     </div>
                 </div>
-                <div className="flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto">
+                <div className="flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto scrollbar-webkit">
                     {searchQuery.length < 1
                         ? displayedTabs.map((tab) => (
                             <div
