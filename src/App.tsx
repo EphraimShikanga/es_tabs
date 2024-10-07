@@ -1,14 +1,23 @@
-// We are creating a nice glass morphism effect chrome extension popup
 import { Tabs } from "@/components/ui/tabs"
 import {Input} from "@/components/ui/input.tsx";
 import {Search} from "lucide-react";
-import {useState} from "react";
-
-// import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card.tsx";
-// import React from "react";
+import {useEffect, useState} from "react";
 
 function App() {
-    const [tabs, setTabs] = useState(0)
+    const [tabs, setTabs] = useState(0);
+
+    useEffect(() => {
+        const updateTabCount = async () => {
+            try {
+                const tabs = await chrome.tabs.query({});
+                setTabs(tabs.length);
+            } catch (error) {
+                console.error("Error fetching tabs: ", error);
+            }
+        };
+
+        updateTabCount().then(r => r);
+    }, []);
   return (
       // <div className={"p-2 h-96 w-96 bg-gradient-to-tr from-[#001f31] via-[#002e45] to-[#416b6b]"}
       // <div className={"p-2 h-96 w-96 bg-cyan-900"}
