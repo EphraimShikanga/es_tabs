@@ -181,6 +181,8 @@ setInterval(async () => {
 
     try {
         const tabs = await chrome.tabs.query({});
+        const activeTab = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTabId = activeTab[0]?.id;
         const groupedTabs: { [groupId: number]: chrome.tabs.Tab[] } = {};
         const ungroupedTabs: chrome.tabs.Tab[] = [];
 
@@ -204,7 +206,7 @@ setInterval(async () => {
             if (groupTabs.length > 1) {
                 for (const tab of groupTabs) {
                     const lastAccessTime = tabAccessTimes[tab.id!];
-                    if (lastAccessTime && now - lastAccessTime > INACTIVITY_THRESHOLD) {
+                    if (tab.id !== activeTabId && lastAccessTime && now - lastAccessTime > INACTIVITY_THRESHOLD) {
                         console.log(`Hibernating grouped tab: ${tab.id}`);
                         await chrome.tabs.discard(tab.id!);
                     }
@@ -214,7 +216,7 @@ setInterval(async () => {
 
         for (const tab of ungroupedTabs) {
             const lastAccessTime = tabAccessTimes[tab.id!];
-            if (lastAccessTime && now - lastAccessTime > INACTIVITY_THRESHOLD) {
+            if (tab.id !== activeTabId && lastAccessTime && now - lastAccessTime > INACTIVITY_THRESHOLD) {
                 console.log(`Hibernating ungrouped tab: ${tab.id}`);
                 await chrome.tabs.discard(tab.id!);
             }
