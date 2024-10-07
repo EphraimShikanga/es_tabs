@@ -24,7 +24,7 @@ const ChromeTab: React.FC<ChromeTabProps> = ({tab}) => {
         >
             <div
                 className="absolute -inset-x-0 -inset-y-0 -z-[2] block rounded-md transition motion-reduce:transition-none group-hover:bg-black/30 group-hover:shadow-[inset_0_1px_0_0_rgba(148,163,184,0.1)] group-hover:drop-shadow-lg"></div>
-            <p className="cursor-default text-xs text-slate-200 text-center truncate w-full">{tab.title}</p>
+            <p className="cursor-default text-xs text-slate-200 text-center truncate w-full">{tab.title!.split("-")[0]}</p>
             <img
                 src={tab.favIconUrl ? tab.favIconUrl : "log.jpeg"}
                 alt={tab.title}

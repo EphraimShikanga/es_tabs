@@ -76,7 +76,13 @@ function App() {
                         />
                     </div>
                     <div className={"rounded-full h-9 w-12 flex items-center justify-center text-slate-200 bg-white/10"}>
-                        <p>{tabs.length}</p>
+                        <p>
+                            {
+                                searchQuery.length < 1
+                                    ? tabs.length
+                                    : filteredTabs.length
+                            }
+                        </p>
                     </div>
                 </div>
                 <div className="group/tabs flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto scrollbar-webkit">
