@@ -2,6 +2,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input.tsx";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import ChromeTab from "@/components/chrome_tab.tsx";
 
 function App() {
     const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
@@ -81,31 +82,11 @@ function App() {
                 </div>
                 <div className="flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto scrollbar-webkit">
                     {searchQuery.length < 1
-                        ? displayedTabs.map((tab) => (
-                            <div
-                                key={tab.id}
-                                className="min-w-20 w-20 h-20 bg-black/10 rounded-lg flex flex-col items-center justify-center p-1"
-                            >
-                                <p className="text-xs text-slate-200 text-center truncate w-full">{tab.title}</p>
-                                <img
-                                    src={tab.favIconUrl ? tab.favIconUrl : "log.jpeg"} // Fallback to default image
-                                    alt={tab.title}
-                                    className="w-10 h-10 mt-1"
-                                />
-                            </div>
+                        ? displayedTabs.map((tab, index) => (
+                            <ChromeTab key={index} tab={tab} />
                         ))
-                        : filteredTabs.map((tab) => (
-                            <div
-                                key={tab.id}
-                                className="min-w-20 w-20 h-20 bg-black/10 rounded-lg flex flex-col items-center justify-center p-1"
-                            >
-                                <p className="text-xs text-slate-200 text-center truncate w-full">{tab.title}</p>
-                                <img
-                                    src={tab.favIconUrl ? tab.favIconUrl : "log.jpeg"} // Fallback to default image
-                                    alt={tab.title}
-                                    className="w-10 h-10 mt-1"
-                                />
-                            </div>
+                        : filteredTabs.map((tab, index) => (
+                            <ChromeTab key={index} tab={tab} />
                         ))}
                 </div>
 
