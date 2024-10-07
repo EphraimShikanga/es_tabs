@@ -10,7 +10,10 @@ function App() {
     const [displayedTabs, setDisplayedTabs] = useState<chrome.tabs.Tab[]>([]);
 
     useEffect(() => {
-        setFilteredTabs(tabs.filter((tab) => tab.title!.toLowerCase().includes(searchQuery.toLowerCase())));
+        setFilteredTabs(tabs.filter((tab) =>
+            tab.title!.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            tab.url!.toLowerCase().includes(searchQuery.toLowerCase())
+        ));
     }, [searchQuery, tabs]);
 
     useEffect(() => {
