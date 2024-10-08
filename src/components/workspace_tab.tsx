@@ -15,7 +15,7 @@ import {useWorkspace} from "@/lib/WorkContext.tsx";
 type Workspace = {
     id: number;
     title: string;
-    tabCount: number;
+    tabs: chrome.tabs.Tab[];
 };
 
 type WorkspaceProps = {
@@ -24,16 +24,35 @@ type WorkspaceProps = {
 
 type WorkspaceTabProps = {
     value: string;
-    workspaces: Workspace[];
 };
 
 const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
-    const {selected, setSelectedItem} = useWorkspace();
+    const {selected, setSelectedItem } = useWorkspace();
     return (
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         <ListItem onClick={() => {
             setSelectedItem(workspace.id);
+            chrome.tabs.query({}, (tabs) => {
+                tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                workspace.tabs.forEach((tab) => {
+                    if (tab.active) {
+                        chrome.tabs.create({ url: tab.url }).then(() => {
+                            console.log('Tab created successfully');
+                        }).catch((error) => {
+                            console.error('Error creating tab:', error);
+                        });
+                    } else {
+                        chrome.tabs.create({ url: tab.url, active: false }).then(() => {
+                            console.log('Tab created successfully');
+                        }).catch((error) => {
+                            console.error('Error creating tab:', error);
+                        });
+                    }
+                });
+            });
+
+
         }} className={`bg-white/20 p-1 ${workspace.id === selected ? "bg-white/70" : ""}`}
         >
             {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
@@ -51,7 +70,7 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                 {/*@ts-expect-error*/}
                 <Typography variant="small" color="blue-gray"
                             className="font-normal">
-                    {workspace.tabCount} tabs
+                    {workspace.tabs.length} tabs
                 </Typography>
             </div>
             {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
@@ -97,20 +116,33 @@ const NewWorkspace: React.FC<NewWorkspaceProps> = ({newWorkspaceName, setNewWork
     );
 }
 
-const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces}) => {
-    const [isAdding, setIsAdding] = useState(false); // Track if adding a new workspace
+const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
+    const [isAdding, setIsAdding] = useState(false);
     const [newWorkspaceName, setNewWorkspaceName] = useState("");
-    const [workspacess, setWorkspaces] = useState([{name: "Test Workspace", tabs: 12}]); // Example initial state
+    const {workspaces, setWorkspaces} = useWorkspace();
+    const { selected, setSelectedItem } = useWorkspace();
 
     const handleAddWorkspace = () => {
         setIsAdding(true);
     };
 
-    const handleCreateWorkspace = () => {
+    const handleCreateWorkspace = async () => {
         if (newWorkspaceName.trim()) {
-            setWorkspaces([...workspacess, {name: newWorkspaceName, tabs: 0}]);
+
+            const currentTabs = await chrome.tabs.query({});
+            const updatedWorkspaces = workspaces.map(workspace =>
+                workspace.id === selected ? { ...workspace, tabs: currentTabs } : workspace
+            );
+            await chrome.tabs.create({ url: "chrome://newtab", active: false });
+            console.log("Tabs: ", updatedWorkspaces);
+
+            const newId = Math.floor(Math.random() * 1000000);
+            setWorkspaces([...updatedWorkspaces, {id:newId, title: newWorkspaceName, tabs: []}]);
             setNewWorkspaceName("");
+            setSelectedItem(newId);
             setIsAdding(false);
+            await chrome.tabs.create({ url: "chrome://newtab", active: false });
+            await Promise.all(currentTabs.map(tab => chrome.tabs.remove(tab.id!)));
         }
     };
 
