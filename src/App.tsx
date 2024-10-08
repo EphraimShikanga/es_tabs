@@ -2,8 +2,9 @@ import {Input} from "@/components/ui/input.tsx";
 import {Search} from "lucide-react";
 import React, {useEffect, useState} from "react";
 import ChromeTab from "@/components/chrome_tab.tsx";
-import {Tabs, TabsHeader,} from "@material-tailwind/react";
+import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
 import ExtensionTab from "@/components/extension_tab.tsx";
+import WorkspaceTab from "@/components/workspace_tab.tsx";
 
 function App() {
     const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
@@ -11,6 +12,8 @@ function App() {
     const [filteredTabs, setFilteredTabs] = useState<chrome.tabs.Tab[]>([]);
     const [displayedTabs, setDisplayedTabs] = useState<chrome.tabs.Tab[]>([]);
     const [activeTab, setActiveTab] = React.useState("Workspaces");
+    const [selected, setSelectedItem] = React.useState(0);
+
 
     useEffect(() => {
         setFilteredTabs(tabs.filter((tab) =>
@@ -97,70 +100,41 @@ function App() {
                             <ChromeTab key={index} tab={tab}/>
                         ))}
                 </div>
-                <Tabs value={activeTab}>
-                    <TabsHeader
-                        placeholder=""
-                        onPointerEnterCapture={() => {
-                        }}
-                        onPointerLeaveCapture={() => {
-                        }}
-                        className={"rounded-none border-blue-50 bg-transparent p-0 group/tab"}
-                        indicatorProps={{className: "bg-transparent border-b-2 border-black shadow-none rounded-none",}}
-                    >
-                        <ExtensionTab value={"Workspaces"} activeTab={activeTab}
-                                      onClick={(value) => setActiveTab(value)}/>
-                        <ExtensionTab value={"Groups"} activeTab={activeTab}
-                                      onClick={(value) => setActiveTab(value)}/>
-                        <ExtensionTab value={"Closed"} activeTab={activeTab}
-                                      onClick={(value) => setActiveTab(value)}/>
-                        <ExtensionTab value={"Settings"} activeTab={activeTab}
-                                      onClick={(value) => setActiveTab(value)}/>
 
-                    </TabsHeader>
-                </Tabs>
+                <div className={"h-[90%] p-1"}>
+                    <Tabs value={activeTab}>
+                        <TabsHeader
+                            placeholder=""
+                            onPointerEnterCapture={() => {
+                            }}
+                            onPointerLeaveCapture={() => {
+                            }}
+                            className={"rounded-none border-blue-50 bg-transparent p-0 group/tab"}
+                            indicatorProps={{className: "bg-transparent border-b-2 border-[#1e293b] shadow-none rounded-none",}}
+                        >
+                            <ExtensionTab value={"Workspaces"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+                            <ExtensionTab value={"Groups"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+                            <ExtensionTab value={"Closed"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+                            <ExtensionTab value={"Settings"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
 
-                {/*<Tabs defaultValue={"workspaces"}>*/}
-                {/*    <TabsList*/}
-                {/*        className={" h-10 p-2 w-full flex flex-row grid-cols-4 justify-between bg-transparent rounded-full"}>*/}
-                {/*        <TabsTrigger*/}
-                {/*            value={"workspaces"}*/}
-                {/*            className={`transition-all duration-300 ease-in-out transform p-1 h-8 border border-white/20 hover:bg-gray-100 hover:scale-105 focus-visible:ring focus-visible:ring-blue-200`}*/}
-                {/*        >*/}
-                {/*            <p className={"text-black text-md"}>*/}
-                {/*                Workspaces*/}
-                {/*            </p>*/}
-                {/*        </TabsTrigger>*/}
-
-                {/*        <TabsTrigger*/}
-                {/*            value={"groups"}*/}
-                {/*            className={`transition-all duration-300 ease-in-out transform p-1 h-8 border border-white/20 hover:bg-gray-100 hover:scale-105 focus-visible:ring focus-visible:ring-blue-200`}*/}
-                {/*        >*/}
-                {/*            <p className={"text-slate-800 text-md"}>*/}
-                {/*                Groups*/}
-                {/*            </p>*/}
-                {/*        </TabsTrigger>*/}
-                {/*        <TabsTrigger value={"closed_tabs"} className={" rounded-2xl p-1 h-8 border border-white/20"}>*/}
-                {/*            <p className={" text-slate-800 text-md "}>*/}
-                {/*                Closed Tabs*/}
-                {/*            </p>*/}
-                {/*        </TabsTrigger>*/}
-                {/*        <TabsTrigger value={"settings"} className={" rounded-2xl p-1 h-8 border border-white/20"}>*/}
-                {/*            <p className={" text-slate-800 text-md "}>*/}
-                {/*                Settings*/}
-                {/*            </p>*/}
-                {/*        </TabsTrigger>*/}
-                {/*        /!*<TabsTrigger value={"groups"}>*!/*/}
-                {/*        /!*    Groups*!/*/}
-                {/*        /!*</TabsTrigger>*!/*/}
-                {/*        /!*<TabsTrigger value={"closed_tabs"}>*!/*/}
-                {/*        /!*    Closed Tabs*!/*/}
-                {/*        /!*</TabsTrigger>*!/*/}
-                {/*        /!*<TabsTrigger value={"settings"}>*!/*/}
-                {/*        /!*    Settings*!/*/}
-                {/*        /!*</TabsTrigger>*!/*/}
-                {/*    </TabsList>*/}
-
-                {/*</Tabs>*/}
+                        </TabsHeader>
+                        <TabsBody
+                            className={"h-96 w-full rounded-lg p-2"}
+                            placeholder=""
+                            onPointerEnterCapture={() => {
+                            }}
+                            onPointerLeaveCapture={() => {
+                            }}
+                        >
+                            <WorkspaceTab value={"Workspaces"} selected={selected}
+                                          setSelectedItem={(index) => setSelectedItem(index)}/>
+                        </TabsBody>
+                    </Tabs>
+                </div>
             </div>
         </div>
     );
