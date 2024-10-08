@@ -14,7 +14,7 @@ const ExtensionTab: React.FC<ExtensionTabProps> = ({value, activeTab, onClick}) 
             key={value}
             value={value}
             onClick={() => onClick(value)}
-            className={`text-blue-50 hover:!opacity-100 group-hover/tab:opacity-50 ${activeTab === value ? "text-black" : ""}`}
+            className={`text-blue-50 hover:!opacity-100 group-hover/tab:opacity-50 ${activeTab === value ? "text-[#1e293b]" : ""}`}
             placeholder=""
             onPointerEnterCapture={() => {
             }}
