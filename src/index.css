@@ -78,6 +78,8 @@
     body {
         @apply bg-background text-foreground;
         border-radius: var(--radius);
+        height: 600px;
+        width: 400px;
     }
 }
 

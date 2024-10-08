@@ -59,6 +59,7 @@ function App() {
     useEffect(() => {
         const updateTabCount = async () => {
             try {
+                console.log(window.innerHeight, window.innerWidth);
                 const tabs = (await chrome.tabs.query({})).filter((tab) => !tab.url?.startsWith("chrome://"));
                 setTabs(tabs);
 
@@ -93,16 +94,8 @@ function App() {
     };
 
     return (
-        <div
-            className={"p-2 h-[500px] w-[388px]"}
-            style={{
-                backgroundImage: "url('tabss.webp')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-            }}
-        >
-            <div className={"h-full w-full bg-black rounded-lg p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
+        <div className={"h-full w-full p-4"}>
+            <div className={" h-full w-full bg-black rounded-lg p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
                 <div className={"flex flex-row items-end w-full justify-between"}>
                     <div className={"bg-white/10 rounded-full flex flex-row items-end pl-2"}>
                         <Search color="rgb(226 232 240)" size={"24px"} className={"mb-[6px]"}/>
@@ -126,6 +119,7 @@ function App() {
                     </div>
                 </div>
                 <div className="group/tabs flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto scrollbar-webkit">
+                    {/*<div className={"h-20 w-20 bg-red-500"}></div>*/}
                     {searchQuery.length < 1
                         ? displayedTabs.map((tab, index) => (
                             <ChromeTab key={index} tab={tab}/>
@@ -135,8 +129,8 @@ function App() {
                         ))}
                 </div>
 
-                <div className={"h-[90%] p-1"}>
-                    <Tabs value={activeTab}>
+                <div className={"p-1 relative h-[78%] w-full"}>
+                    <Tabs value={activeTab} className={"h-full"}>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <TabsHeader
@@ -156,7 +150,7 @@ function App() {
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <TabsBody
-                            className={"h-96 w-full rounded-lg p-2"}
+                            className={"h-full w-full rounded-lg p-2 "}
                         >
                             <WorkspaceProvider>
                                 <WorkspaceTab value={"Workspaces"} workspaces={workspaces}/>

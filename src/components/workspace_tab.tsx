@@ -120,8 +120,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces}) => {
 
 
     return (
-        <TabPanel value={value} className={"h-full"}>
-
+        <TabPanel value={value} className={"h-[92%]"} >
             {isAdding ? (
                 <>
                     <div className="flex gap-2">
@@ -143,7 +142,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces}) => {
                 </Button>
             )}
 
-            <div className={"max-h-[90%] overflow-y-scroll scrollbar-webkit "}>
+            <div className={"h-[94%] overflow-auto scrollbar-webkit "}>
 
                 {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                 {/*@ts-expect-error*/}
