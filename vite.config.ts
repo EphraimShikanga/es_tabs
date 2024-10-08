@@ -5,6 +5,7 @@ import path from "path"
 
 export default defineConfig({
   build: {
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'index.html'), // Include popup.html or index.html for the default popup
