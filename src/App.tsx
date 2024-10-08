@@ -48,6 +48,7 @@ function App() {
     const [filteredTabs, setFilteredTabs] = useState<chrome.tabs.Tab[]>([]);
     const [displayedTabs, setDisplayedTabs] = useState<chrome.tabs.Tab[]>([]);
     const [activeTab, setActiveTab] = React.useState("Workspaces");
+    const [selected, setSelected] = React.useState(0);
 
 
 
@@ -160,7 +161,7 @@ function App() {
                         <TabsBody
                             className={"h-96 w-full rounded-lg p-2"}
                         >
-                            <WorkspaceTab value={"Workspaces"} workspaces={workspaces}/>
+                            <WorkspaceTab value={"Workspaces"} workspaces={workspaces} selected={selected} onSelect={setSelected}/>
                         </TabsBody>
                     </Tabs>
                 </div>
