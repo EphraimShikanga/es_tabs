@@ -5,40 +5,39 @@ import ChromeTab from "@/components/chrome_tab.tsx";
 import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
 import ExtensionTab from "@/components/extension_tab.tsx";
 import WorkspaceTab from "@/components/workspace_tab.tsx";
+import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
 
 const workspaces = [
     {
+        id: 1,
         title: "Work",
         tabCount: 5
     },
 
     {
+        id: 2,
         title: "School",
         tabCount: 7
     },
     {
+        id: 3,
         title: "Personal",
         tabCount: 3
     },
     {
+        id: 4,
         title: "Events",
         tabCount: 5
     },
     {
+        id: 5,
         title: "News",
         tabCount: 7
     },
     {
+        id: 6,
         title: "Shopping",
         tabCount: 3
-    },
-    {
-        title: "Sports",
-        tabCount: 5
-    },
-    {
-        title: "Social",
-        tabCount: 7
     }
 ]
 
@@ -48,8 +47,6 @@ function App() {
     const [filteredTabs, setFilteredTabs] = useState<chrome.tabs.Tab[]>([]);
     const [displayedTabs, setDisplayedTabs] = useState<chrome.tabs.Tab[]>([]);
     const [activeTab, setActiveTab] = React.useState("Workspaces");
-    const [selected, setSelected] = React.useState(0);
-
 
 
     useEffect(() => {
@@ -161,7 +158,9 @@ function App() {
                         <TabsBody
                             className={"h-96 w-full rounded-lg p-2"}
                         >
-                            <WorkspaceTab value={"Workspaces"} workspaces={workspaces} selected={selected} onSelect={setSelected}/>
+                            <WorkspaceProvider>
+                                <WorkspaceTab value={"Workspaces"} workspaces={workspaces}/>
+                            </WorkspaceProvider>
                         </TabsBody>
                     </Tabs>
                 </div>

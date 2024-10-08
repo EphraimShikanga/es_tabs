@@ -1,35 +1,32 @@
 import {Button, List, ListItem, ListItemPrefix, ListItemSuffix, TabPanel, Typography} from "@material-tailwind/react";
 import React from "react";
 import {Layers, Settings2} from "lucide-react";
+import {useWorkspace} from "@/lib/WorkContext.tsx";
 
 type Workspace = {
+    id: number;
     title: string;
     tabCount: number;
 };
 
 type WorkspaceProps = {
-    title: string;
-    index: number;
-    tabCount: number;
-    selected: number;
-    onClicked: () => void;
+    workspace: Workspace;
 };
 
 type WorkspaceTabProps = {
     value: string;
-    selected: number;
-    onSelect: (i: number) => void;
     workspaces: Workspace[];
 };
 
-const Workspace: React.FC<WorkspaceProps> = ({title, tabCount, index, selected, onClicked}) => {
+const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
+    const { selected, setSelectedItem } = useWorkspace();
     return (
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
         <ListItem onClick={() => {
-            onClicked();
-            console.log("clicked", index, selected);
-        }} className={`bg-white/20 p-1 ${index === selected ? "bg-white/70" : ""}`}
+            setSelectedItem(workspace.id);
+            console.log("clicked", workspace.id, selected);
+        }} className={`bg-white/20 p-1 ${workspace.id === selected ? "bg-white/70" : ""}`}
         >
             {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
             {/*@ts-expect-error*/}
@@ -40,13 +37,13 @@ const Workspace: React.FC<WorkspaceProps> = ({title, tabCount, index, selected, 
                 {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                 {/*@ts-expect-error*/}
                 <Typography variant="h6" color="blue-gray">
-                    {title}
+                    {workspace.title}
                 </Typography>
                 {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                 {/*@ts-expect-error*/}
                 <Typography  variant="small" color="blue-gray"
                             className="font-normal">
-                    {tabCount} tabs
+                    {workspace.tabCount} tabs
                 </Typography>
             </div>
             {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
@@ -59,7 +56,7 @@ const Workspace: React.FC<WorkspaceProps> = ({title, tabCount, index, selected, 
 
 }
 
-const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces, selected, onSelect}) => {
+const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces}) => {
     return (
         <TabPanel value={value} className={"h-full"}>
             {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
@@ -76,8 +73,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces, selected,
                 <List>
                     {
                         workspaces.map((workspace, index) => (
-                            <Workspace key={index} index={index} selected={selected} onClicked={() => onSelect(index)} title={workspace.title} tabCount={workspace.tabCount}
-                            />
+                            <Workspace key={index} workspace={workspace}/>
                         ))
                     }
 
