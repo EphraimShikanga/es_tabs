@@ -38,6 +38,26 @@ const workspaces = [
         id: 6,
         title: "Shopping",
         tabCount: 3
+    },
+    {
+        id: 6,
+        title: "Shopping",
+        tabCount: 3
+    },
+    {
+        id: 6,
+        title: "Shopping",
+        tabCount: 3
+    },
+    {
+        id: 6,
+        title: "Shopping",
+        tabCount: 3
+    },
+    {
+        id: 6,
+        title: "Shopping",
+        tabCount: 3
     }
 ]
 
@@ -129,7 +149,8 @@ function App() {
                         ))}
                 </div>
 
-                <div className={"p-1 relative h-[78%] w-full"}>
+                <div
+                    className={`p-1 relative w-full ${tabs.length === 0 || filteredTabs.length === 0 ? "h-[92%]" : "h-[78%]"}`}>
                     <Tabs value={activeTab} className={"h-full"}>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
