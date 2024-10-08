@@ -6,13 +6,49 @@ import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
 import ExtensionTab from "@/components/extension_tab.tsx";
 import WorkspaceTab from "@/components/workspace_tab.tsx";
 
+const workspaces = [
+    {
+        title: "Work",
+        tabCount: 5
+    },
+
+    {
+        title: "School",
+        tabCount: 7
+    },
+    {
+        title: "Personal",
+        tabCount: 3
+    },
+    {
+        title: "Events",
+        tabCount: 5
+    },
+    {
+        title: "News",
+        tabCount: 7
+    },
+    {
+        title: "Shopping",
+        tabCount: 3
+    },
+    {
+        title: "Sports",
+        tabCount: 5
+    },
+    {
+        title: "Social",
+        tabCount: 7
+    }
+]
+
 function App() {
     const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [filteredTabs, setFilteredTabs] = useState<chrome.tabs.Tab[]>([]);
     const [displayedTabs, setDisplayedTabs] = useState<chrome.tabs.Tab[]>([]);
     const [activeTab, setActiveTab] = React.useState("Workspaces");
-    const [selected, setSelectedItem] = React.useState(0);
+
 
 
     useEffect(() => {
@@ -103,12 +139,9 @@ function App() {
 
                 <div className={"h-[90%] p-1"}>
                     <Tabs value={activeTab}>
+                        {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
+                        {/*@ts-expect-error*/}
                         <TabsHeader
-                            placeholder=""
-                            onPointerEnterCapture={() => {
-                            }}
-                            onPointerLeaveCapture={() => {
-                            }}
                             className={"rounded-none border-blue-50 bg-transparent p-0 group/tab"}
                             indicatorProps={{className: "bg-transparent border-b-2 border-[#1e293b] shadow-none rounded-none",}}
                         >
@@ -122,16 +155,12 @@ function App() {
                                           onClick={(value) => setActiveTab(value)}/>
 
                         </TabsHeader>
+                        {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
+                        {/*@ts-expect-error*/}
                         <TabsBody
                             className={"h-96 w-full rounded-lg p-2"}
-                            placeholder=""
-                            onPointerEnterCapture={() => {
-                            }}
-                            onPointerLeaveCapture={() => {
-                            }}
                         >
-                            <WorkspaceTab value={"Workspaces"} selected={selected}
-                                          setSelectedItem={(index) => setSelectedItem(index)}/>
+                            <WorkspaceTab value={"Workspaces"} workspaces={workspaces}/>
                         </TabsBody>
                     </Tabs>
                 </div>

@@ -10,16 +10,13 @@ type ExtensionTabProps = {
 const ExtensionTab: React.FC<ExtensionTabProps> = ({value, activeTab, onClick}) => {
 
     return (
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
         <Tab
             key={value}
             value={value}
             onClick={() => onClick(value)}
             className={`text-blue-50 hover:!opacity-100 group-hover/tab:opacity-50 ${activeTab === value ? "text-[#1e293b]" : ""}`}
-            placeholder=""
-            onPointerEnterCapture={() => {
-            }}
-            onPointerLeaveCapture={() => {
-            }}
         >
             <p>{value}</p>
         </Tab>
