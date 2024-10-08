@@ -86,10 +86,11 @@ const NewWorkspace: React.FC<NewWorkspaceProps> = ({newWorkspaceName, setNewWork
                     // label={"Workspace"}
                     variant="static"
                     color={"blue-gray"}
+                    style={{width: "100%", fontSize: "24px", color: "black", fontWeight: "bold"}}
                     value={newWorkspaceName}
                     onChange={(e) => setNewWorkspaceName(e.target.value)}
-                    placeholder="Enter workspace name"
-                    className="border-none rounded-lg mb-1 p-2 text-[30px] text-bold text-[#1e293b] placeholder:text-blue-gray-600 placeholder:opacity-50"
+                    placeholder="New Workspace"
+                    className="pb-3 pl-3 placeholder:text-[20px] placeholder:text-blue-gray-600 placeholder:opacity-50"
                 />
             </div>
         </ListItem>
@@ -126,10 +127,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value, workspaces}) => {
                     <div className="flex gap-2">
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
-                        <Button onClick={handleCreateWorkspace} className="bg-green-600">Create</Button>
+                        <Button onClick={handleCreateWorkspace} className="rounded-lg mb-1 hover:bg-blue-gray-100/20 p-2 text-xs border border-white text-slate-200 bg-[#1e293b]">Create</Button>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
-                        <Button onClick={handleCancel} className="bg-red-600">Cancel</Button>
+                        <Button onClick={handleCancel} className="rounded-lg hover:bg-blue-gray-900 mb-1 p-2 text-xs text-slate-200 bg-[#1e293b]/70">Cancel</Button>
                     </div>
                 </>
             ) : (
