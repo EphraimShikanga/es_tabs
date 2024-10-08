@@ -1,15 +1,13 @@
 import { createContext, useState, useContext, ReactNode } from 'react';
 
-// Define the shape of your context
 interface WorkspaceContextType {
     selected: number;
     setSelectedItem: (value: number) => void;
 }
 
-// Create the context
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
-// Create a custom hook to use the WorkspaceContext
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWorkspace = () => {
     const context = useContext(WorkspaceContext);
     if (!context) {
@@ -18,7 +16,6 @@ export const useWorkspace = () => {
     return context;
 };
 
-// Create the provider component
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const [selected, setSelectedItem] = useState<number>(0);
 
