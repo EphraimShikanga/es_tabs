@@ -1,9 +1,10 @@
-import {createContext, useState, useContext, ReactNode, Dispatch, SetStateAction, useEffect} from 'react';
+import {createContext, useState, useContext, ReactNode, Dispatch, SetStateAction, useEffect,} from 'react';
 
 type Workspace = {
     id: number;
     title: string;
     tabs: chrome.tabs.Tab[];
+    isCurrent: boolean;
 };
 
 interface WorkspaceContextType {
@@ -29,36 +30,35 @@ const savedWorkspaces = [
         id: 1,
         title: "Default",
         tabs: [],
+        isCurrent: true,
     },
 ]
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const [selected, setSelectedItem] = useState<number>(0);
     const [workspaces, setWorkspaces] = useState<Workspace[]>(savedWorkspaces);
-    // Save workspaces to chrome storage whenever they change
-    useEffect(() => {
-        const saveWorkspaces = async () => {
-            try {
-                localStorage.set({ "workspaces": workspaces });
-                console.log('Workspaces saved:', workspaces);
-            } catch (error) {
-                console.error('Error saving workspaces:', error);
-            }
-        };
-        if (workspaces.length > 0) {
-            saveWorkspaces().then((r) => r);  // Save only if there are workspaces
-        }
-    }, [workspaces]);
 
-    // Load workspaces from chrome storage on component mount
     useEffect(() => {
-        const loadWorkspaces = async () => {
+        const loadWorkspaces =  async () => {
             try {
-                const result = localStorage.get("workspaces");
+                // const res = localStorage.getItem('workspaces') ? JSON.parse(localStorage.getItem('workspaces')!) : null;
+                const result = await chrome.storage.local.get('workspaces')
+                // const currentWorkspaces = result.workspaces;
+                // const result = await chrome.storage.local.get('workspaces');
+                // if (Array.isArray(result.workspaces) && result.workspaces.length > 0) {
+                //     setWorkspaces(result.workspaces);
+
+                console.log(result.workspaces);
+
                 if (result.workspaces && result.workspaces.length > 0) {
                     setWorkspaces(result.workspaces);
+                    const currentWorkspace = result.workspaces.find((workspace: Workspace) => workspace.isCurrent);
+                    if (currentWorkspace) {
+                        setSelectedItem(currentWorkspace.id);
+                    }
                     console.log('Workspaces loaded:', result.workspaces);
                 } else {
+                    setSelectedItem(1);
                     console.log('No workspaces found, using default');
                 }
             } catch (error) {
