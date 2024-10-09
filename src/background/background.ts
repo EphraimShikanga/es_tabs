@@ -180,8 +180,8 @@ setInterval(async () => {
     const now = Date.now();
 
     try {
-        const tabs = await chrome.tabs.query({});
-        const activeTab = await chrome.tabs.query({ active: true, currentWindow: true });
+        const tabs = await chrome.tabs.query({windowType: 'normal'});
+        const activeTab = await chrome.tabs.query({ active: true, currentWindow: true, windowType: 'normal' });
         const activeTabId = activeTab[0]?.id;
         const groupedTabs: { [groupId: number]: chrome.tabs.Tab[] } = {};
         const ungroupedTabs: chrome.tabs.Tab[] = [];
@@ -226,5 +226,33 @@ setInterval(async () => {
         console.error("Error during tab hibernation check:", error);
     }
 }, 30 * 1000);
+
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    if (request.action === "createNewTabAndRemoveCurrent") {
+        const currentTabs = request.currentTabs;
+
+        // Close all current tabs
+        Promise.all(currentTabs.map((tab: chrome.tabs.Tab) => chrome.tabs.remove(tab.id!)))
+            .then(() => {
+                console.log("All current tabs closed");
+
+                // Restore tabs from the workspace
+                Promise.all(currentTabs.map((tab: chrome.tabs.Tab) => chrome.tabs.create({ url: tab.url, active: tab.active })))
+                    .then(() => {
+                        console.log("All tabs restored");
+                        sendResponse({ success: true });
+                    })
+                    .catch((error) => {
+                        console.error("Error restoring tabs", error);
+                        sendResponse({ success: false });
+                    });
+            })
+            .catch((error) => {
+                console.error("Error closing tabs", error);
+                sendResponse({ success: false });
+            });
+        return true;
+    }
+});
 
 
