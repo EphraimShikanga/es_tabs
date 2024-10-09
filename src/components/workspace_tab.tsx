@@ -46,21 +46,15 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                     console.log("Workspaces saved successfully");
                     if (workspace.tabs.length > 0) {
                         workspace.tabs.forEach((tab) => {
-                            // if (tab.active) {
-                                chrome.tabs.create({url: tab.url, active: false}).then(() => {
-                                    console.log('Tab created successfully');
-                                }).catch((error) => {
-                                    console.error('Error creating tab:', error);
-                                });
-                            // } else {
-                            //     chrome.tabs.create({url: tab.url, active: false}).then(() => {
-                            //         console.log('Tab created successfully');
-                            //     }).catch((error) => {
-                            //         console.error('Error creating tab:', error);
-                            //     });
-                            // }
-                            tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                            chrome.tabs.create({url: tab.url}).then(() => {
+                                console.log('Tab created successfully');
+                            }).catch((error) => {
+                                console.error('Error creating tab:', error);
+                            });
                         });
+                        tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                        await new Promise((resolve) => setTimeout(resolve, 5000));
+                        workspace.tabs.forEach((tab) => chrome.tabs.discard(tab.id!));
                     } else {
                         await chrome.tabs.create({url: "chrome://newtab", active: true});
                         tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
