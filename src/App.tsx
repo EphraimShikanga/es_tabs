@@ -4,6 +4,7 @@ import React, {useEffect, useState} from "react";
 import ChromeTab from "@/components/chrome_tab.tsx";
 import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
 import ExtensionTab from "@/components/extension_tab.tsx";
+import GroupsTab from "@/components/groups_tab.tsx";
 import WorkspaceTab from "@/components/workspace_tab.tsx";
 import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
 
@@ -17,6 +18,7 @@ function App() {
 
 
     useEffect(() => {
+        // TODO: Implement searching from other workspace tabs and window tabs
         setFilteredTabs(tabs.filter((tab) =>
             tab.title!.toLowerCase().includes(searchQuery.toLowerCase()) ||
             tab.url!.toLowerCase().includes(searchQuery.toLowerCase())
@@ -62,8 +64,8 @@ function App() {
 
     return (
         <div className={"h-full w-full p-4"}>
-            <div className={" h-full w-full bg-black rounded-lg p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
-                <div className={"flex flex-row items-end w-full justify-between"}>
+            <div className={" h-full w-full bg-black rounded-lg pl-0 p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
+                <div className={"pl-2 flex flex-row items-end w-full justify-between"}>
                     <div className={"bg-white/10 rounded-full flex flex-row items-end pl-2"}>
                         <Search color="rgb(226 232 240)" size={"24px"} className={"mb-[6px]"}/>
                         <Input
@@ -97,11 +99,12 @@ function App() {
                 </div>
 
                 <div
-                    className={`p-1 relative w-full ${tabs.length === 0 || filteredTabs.length === 0 ? "h-[92%]" : "h-[78%]"}`}>
+                    className={`pl-0 p-1 relative w-full ${tabs.length === 0 || filteredTabs.length === 0 ? "h-[92%]" : "h-[78%]"}`}>
                     <Tabs value={activeTab} className={"h-full"}>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <TabsHeader
+                            defaultValue={"Groups"}
                             className={"rounded-none border-blue-50 bg-transparent p-0 group/tab"}
                             indicatorProps={{className: "bg-transparent border-b-2 border-[#1e293b] shadow-none rounded-none",}}
                         >
@@ -118,11 +121,13 @@ function App() {
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <TabsBody
+                            // defaultValue={"Groups"}
                             className={"h-full w-full rounded-lg p-2 "}
                         >
                             <WorkspaceProvider>
                                 <WorkspaceTab value={"Workspaces"}/>
                             </WorkspaceProvider>
+                            <GroupsTab value={"Groups"}/>
                         </TabsBody>
                     </Tabs>
                 </div>
