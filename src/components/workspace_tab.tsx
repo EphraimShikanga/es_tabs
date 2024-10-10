@@ -130,9 +130,26 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                         <IconButton size={"24px"} variant="text" color="blue-gray" onClick={
                             () => {
                                 const updatedWorkspaces = workspaces.filter(w => w.id !== workspace.id);
-                                chrome.storage.local.set({'workspaces': updatedWorkspaces}, () => {
+                                chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
                                     setWorkspaces(updatedWorkspaces);
                                     console.log("Workspace deleted successfully");
+
+                                    if (workspace.isCurrent) {
+                                        const defaultWorkspace = updatedWorkspaces.find(w => w.id === 1);
+                                        if (defaultWorkspace) {
+                                            chrome.tabs.query({windowType: "normal"}, (tabs) => {
+                                                tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                                                defaultWorkspace.tabs.forEach((tab) => {
+                                                    chrome.tabs.create({url: tab.url}).then(() => {
+                                                        console.log('Tab created successfully');
+                                                    }).catch((error) => {
+                                                        console.error('Error creating tab:', error);
+                                                    });
+                                                });
+
+                                            });
+                                        }
+                                    }
                                 });
                             }
                         }>
