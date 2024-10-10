@@ -87,7 +87,7 @@ function App() {
                         </p>
                     </div>
                 </div>
-                <div className="group/tabs flex flex-row h-22 w-full py-1 gap-2 overflow-x-auto scrollbar-webkit">
+                <div className="group/tabs flex flex-row h-22 w-full py-1 pl-2 gap-2 overflow-x-auto scrollbar-webkit">
                     {/*<div className={"h-20 w-20 bg-red-500"}></div>*/}
                     {searchQuery.length < 1
                         ? displayedTabs.map((tab, index) => (
@@ -105,7 +105,7 @@ function App() {
                         {/*@ts-expect-error*/}
                         <TabsHeader
                             defaultValue={"Groups"}
-                            className={"rounded-none border-blue-50 bg-transparent p-0 group/tab"}
+                            className={"rounded-none border-blue-50 bg-transparent p-0 pl-2 group/tab"}
                             indicatorProps={{className: "bg-transparent border-b-2 border-[#1e293b] shadow-none rounded-none",}}
                         >
                             <ExtensionTab value={"Workspaces"} activeTab={activeTab}
