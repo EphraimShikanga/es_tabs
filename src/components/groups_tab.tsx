@@ -8,7 +8,7 @@ import {
     TabPanel,
     Typography
 } from "@material-tailwind/react";
-import {ChevronDown, ChevronUp, Plus} from "lucide-react";
+import {ChevronDown, ChevronUp} from "lucide-react";
 import React, {useState} from "react";
 import {useWorkspace} from "@/lib/WorkContext.tsx";
 
@@ -92,11 +92,13 @@ const Group: React.FC<GroupProps> = ({group, tabs}) => {
                         </div>
                     </div>
                     <div className={"flex flex-row"}>
-                        {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
-                        {/*@ts-expect-error*/}
-                        <IconButton size={"sm"} variant="text" color="white" className={"rounded-full"}>
-                            <Plus size={"18px"} color={"black"}/>
-                        </IconButton>
+                        {/*/!*eslint-disable-next-line @typescript-eslint/ban-ts-comment*!/*/}
+                        {/*/!*@ts-expect-error*!/*/}
+                        {/*<IconButton size={"sm"} variant="text" color="white" className={"rounded-full"}*/}
+                        {/*            onClick={() => console.log("Add tab")}*/}
+                        {/*>*/}
+                        {/*    <Plus size={"18px"} color={"black"}/>*/}
+                        {/*</IconButton>*/}
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <IconButton onClick={() => setOpen(!open)} size={"sm"} variant="text" color="white"
