@@ -4,6 +4,7 @@ type Workspace = {
     id: number;
     title: string;
     tabs: chrome.tabs.Tab[];
+    groups: chrome.tabGroups.TabGroup[];
     isCurrent: boolean;
 };
 
@@ -30,6 +31,7 @@ const savedWorkspaces = [
         id: 1,
         title: "Default",
         tabs: [],
+        groups: [],
         isCurrent: true,
     },
 ]
@@ -41,14 +43,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const loadWorkspaces =  async () => {
             try {
-                // const res = localStorage.getItem('workspaces') ? JSON.parse(localStorage.getItem('workspaces')!) : null;
                 const result = await chrome.storage.local.get('workspaces')
-                // const currentWorkspaces = result.workspaces;
-                // const result = await chrome.storage.local.get('workspaces');
-                // if (Array.isArray(result.workspaces) && result.workspaces.length > 0) {
-                //     setWorkspaces(result.workspaces);
-
-                console.log(result.workspaces);
 
                 if (result.workspaces && result.workspaces.length > 0) {
                     setWorkspaces(result.workspaces);

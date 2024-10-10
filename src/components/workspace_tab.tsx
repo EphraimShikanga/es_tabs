@@ -17,6 +17,7 @@ type Workspace = {
     id: number;
     title: string;
     tabs: chrome.tabs.Tab[];
+    groups: chrome.tabGroups.TabGroup[];
     isCurrent: boolean;
 };
 
@@ -59,27 +60,32 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
         <ListItem className={`bg-white/20 p-1 ${workspace.isCurrent ? "bg-white/70" : ""}`}
         >
             <div className={"flex flex-row flex-grow"} onClick={() => {
-                chrome.tabs.query({windowType: "normal"}, (tabs) => {
-                    const updatedWorkspaces = workspaces.map(w =>
-                        workspace.id === w.id ? {...w, isCurrent: true} : {...w, tabs: tabs, isCurrent: false}
-                    );
-                    chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
-                        console.log("Workspaces saved successfully");
-                        if (workspace.tabs.length > 0) {
-                            workspace.tabs.forEach((tab) => {
-                                chrome.tabs.create({url: tab.url}).then(() => {
-                                    console.log('Tab created successfully');
-                                }).catch((error) => {
-                                    console.error('Error creating tab:', error);
+                chrome.tabGroups.query({}, (groups) => {
+                    chrome.tabs.query({windowType: "normal"}, (tabs) => {
+                        const updatedWorkspaces = workspaces.map(w =>
+                            workspace.id === w.id ? {...w, isCurrent: true} : {...w, tabs: tabs, groups: groups, isCurrent: false}
+                        );
+                        // TODO: Will handle this and tabs with groups later
+                        chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
+                            console.log("Workspaces saved successfully");
+                            if (workspace.tabs.length > 0) {
+                                workspace.tabs.forEach((tab) => {
+                                    chrome.tabs.create({url: tab.url}).then((t) => {
+                                        tab.id = t.id;
+                                        chrome.tabs.discard(tab.id!)
+                                        console.log('Tab created successfully');
+                                    }).catch((error) => {
+                                        console.error('Error creating tab:', error);
+                                    });
                                 });
-                            });
-                            tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                            await new Promise((resolve) => setTimeout(resolve, 5000));
-                            workspace.tabs.forEach((tab) => chrome.tabs.discard(tab.id!));
-                        } else {
-                            await chrome.tabs.create({url: "chrome://newtab", active: true});
-                            tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                        }
+                                tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                                await new Promise((resolve) => setTimeout(resolve, 5000));
+                                // workspace.tabs.forEach((tab) => chrome.tabs.discard(tab.id!));
+                            } else {
+                                await chrome.tabs.create({url: "chrome://newtab", active: true});
+                                tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                            }
+                        });
                     });
                 });
             }}>
@@ -208,19 +214,27 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
 
     const handleCreateWorkspace = async () => {
         if (newWorkspaceName.trim()) {
-            chrome.tabs.query({windowType: "normal"}, (tabs) => {
-                const updatedWorkspaces = workspaces.map(workspace =>
-                    workspace.isCurrent ? {...workspace, tabs: tabs, isCurrent: false} : workspace
-                );
-                const newId = Math.floor(Math.random() * 1000000);
-                const toSave = [...updatedWorkspaces, {id: newId, title: newWorkspaceName, tabs: [], isCurrent: true}];
-                setWorkspaces(toSave);
-                setNewWorkspaceName("");
-                setIsAdding(false);
+            chrome.tabGroups.query({}, (groups) => {
+                chrome.tabs.query({windowType: "normal"}, (tabs) => {
+                    const updatedWorkspaces = workspaces.map(workspace =>
+                        workspace.isCurrent ? {...workspace, tabs: tabs, groups:groups, isCurrent: false} : workspace
+                    );
+                    const newId = Math.floor(Math.random() * 1000000);
+                    const toSave = [...updatedWorkspaces, {
+                        id: newId,
+                        title: newWorkspaceName,
+                        tabs: [],
+                        groups: [],
+                        isCurrent: true
+                    }];
+                    setWorkspaces(toSave);
+                    setNewWorkspaceName("");
+                    setIsAdding(false);
 
-                chrome.storage.local.set({'workspaces': toSave}, async () => {
-                    tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                    await chrome.tabs.create({url: "chrome://newtab", active: true});
+                    chrome.storage.local.set({'workspaces': toSave}, async () => {
+                        tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                        await chrome.tabs.create({url: "chrome://newtab", active: true});
+                    });
                 });
             });
         }

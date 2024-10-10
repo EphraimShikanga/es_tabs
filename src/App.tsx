@@ -64,7 +64,8 @@ function App() {
 
     return (
         <div className={"h-full w-full p-4"}>
-            <div className={" h-full w-full bg-black rounded-lg pl-0 p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
+            <div
+                className={" h-full w-full bg-black rounded-lg pl-0 p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
                 <div className={"pl-2 flex flex-row items-end w-full justify-between"}>
                     <div className={"bg-white/10 rounded-full flex flex-row items-end pl-2"}>
                         <Search color="rgb(226 232 240)" size={"24px"} className={"mb-[6px]"}/>
@@ -126,8 +127,8 @@ function App() {
                         >
                             <WorkspaceProvider>
                                 <WorkspaceTab value={"Workspaces"}/>
+                                <GroupsTab value={"Groups"}/>
                             </WorkspaceProvider>
-                            <GroupsTab value={"Groups"}/>
                         </TabsBody>
                     </Tabs>
                 </div>
