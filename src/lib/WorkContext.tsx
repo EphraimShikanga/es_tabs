@@ -44,11 +44,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         const loadWorkspaces =  async () => {
             try {
                 const result = await chrome.storage.local.get('workspaces')
+                const grps = await chrome.tabGroups.query({});
+                const tbs = await chrome.tabs.query({});
+
 
                 if (result.workspaces && result.workspaces.length > 0) {
                     setWorkspaces(result.workspaces);
                     const currentWorkspace = result.workspaces.find((workspace: Workspace) => workspace.isCurrent);
                     if (currentWorkspace) {
+                        currentWorkspace.groups = grps;
+                        currentWorkspace.tabs = tbs;
                         setSelectedItem(currentWorkspace.id);
                     }
                     console.log('Workspaces loaded:', result.workspaces);

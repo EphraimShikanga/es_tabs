@@ -76,16 +76,16 @@ const Group: React.FC<GroupProps> = ({group, tabs}) => {
 
             {/*</div>*/}
             <div className={"flex flex-col"}>
-                <div className={"w-full h-10 rounded-lg flex flex-row justify-between items-center px-3 "}
+                <div className={"w-full h-10 rounded-lg flex flex-row justify-between items-center bg-opacity-60 px-3 "}
                      style={{backgroundColor: group.color}}>
                     <div onClick={() => setOpen(!open)} className={"flex flex-row gap-2 flex-grow cursor-default"}>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
-                        <Typography variant="h6" color="white">
+                        <Typography className={"text-black font-medium"}>
                             {group.title}
                         </Typography>
                         <div
-                            className={"rounded-full h-6 w-7 flex items-center justify-center text-slate-200 bg-white/50"}>
+                            className={"rounded-full h-6 w-7 flex items-center justify-center text-black bg-white/70"}>
                             <p>
                                 {tabs.length}
                             </p>
@@ -95,7 +95,7 @@ const Group: React.FC<GroupProps> = ({group, tabs}) => {
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <IconButton size={"sm"} variant="text" color="white" className={"rounded-full"}>
-                            <Plus size={"18px"}/>
+                            <Plus size={"18px"} color={"black"}/>
                         </IconButton>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
@@ -104,8 +104,8 @@ const Group: React.FC<GroupProps> = ({group, tabs}) => {
 
                             {
                                 open
-                                    ? <ChevronUp size={"18px"}/>
-                                    : <ChevronDown size={"18px"}/>
+                                    ? <ChevronUp size={"18px"} color={"black"}/>
+                                    : <ChevronDown size={"18px"} color={"black"}/>
                             }
                         </IconButton>
                     </div>
