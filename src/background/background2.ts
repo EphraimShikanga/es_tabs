@@ -66,33 +66,39 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
-        if (changeInfo.status === 'complete') {
-            await groupTabs(tab)
-        }
+    if (changeInfo.status === 'complete') {
+        await groupTabs(tab);
     }
-);
+});
 
 async function groupTabs(tab: chrome.tabs.Tab) {
-    console.log("ephraim");
     if (tab.url) {
         const url = new URL(tab.url);
         const domain = url.hostname;
-        console.log(domain, url);
-        chrome.tabs.query({url: `*://*.${domain}/*`}, async (existingTabs) => {
+
+        chrome.tabs.query({ url: `*://*.${domain}/*` }, (existingTabs) => {
             if (existingTabs.length > 1) {
-                const tabIds = existingTabs.map(t => t.id).filter((id): id is number => id !== undefined);
-                const groupId = existingTabs[0].groupId;
-                if (groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-                    chrome.tabs.group({tabIds, groupId}, async (group) => {
-                        if (tabIds.includes(tab.id!)) {
-                            await chrome.tabGroups.update(group, {title: domain, collapsed: false});
-                        } else {
-                            await chrome.tabGroups.update(group, {title: domain, collapsed: true});
+                const tabIds: number[] = [];
+                let groupId: number | undefined = undefined;
+
+                existingTabs.forEach(t => {
+                    if (t.id !== undefined) {
+                        tabIds.push(t.id);
+                        if (groupId === undefined) {
+                            groupId = t.groupId;
                         }
-                    });
+                    }
+                });
+
+                if (groupId !== undefined && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+                    if (!tabIds.includes(tab.id!)) {
+                        chrome.tabs.group({ tabIds, groupId }, (group) => {
+                            chrome.tabGroups.update(group, { title: domain, collapsed: false });
+                        });
+                    }
                 } else {
-                    chrome.tabs.group({tabIds}, async (group) => {
-                        await chrome.tabGroups.update(group, {title: domain, collapsed: false});
+                    chrome.tabs.group({ tabIds }, (group) => {
+                        chrome.tabGroups.update(group, { title: domain, collapsed: false });
                     });
                 }
             }
