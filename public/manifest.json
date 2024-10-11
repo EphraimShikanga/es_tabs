@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "es_tabs",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "An extension that solves the problem of too many tabs",
   "action": {
     "default_popup": "index.html",

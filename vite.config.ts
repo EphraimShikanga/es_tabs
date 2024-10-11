@@ -9,7 +9,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(__dirname, 'index.html'), // Include popup.html or index.html for the default popup
-        background: resolve(__dirname, 'src/background/background.ts'), // Background script
+        background: resolve(__dirname, 'src/background/background2.ts'), // Background script
       },
       output: {
         entryFileNames: '[name].js', // Ensures consistent file names
