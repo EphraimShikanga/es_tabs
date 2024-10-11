@@ -1,9 +1,11 @@
-// Define types for configuration and messages
 import MessageSender = chrome.runtime.MessageSender;
 
 interface Config {
-    [key: string]: any; // Define your specific config properties here
+    [key: string]: any;
+
+    removeFromGroupOnDomainChange?: boolean;
 }
+
 
 type MessageType = 'updateConfig' | 'someOtherAction';
 
@@ -13,7 +15,25 @@ interface Message<T = any> {
 }
 
 // Configuration object to hold settings from the popup UI
-let config: Config = {};
+let config: Config = {
+    removeFromGroupOnDomainChange: true
+};
+// Save the configuration to chrome.storage for persistence across sessions
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.storage.local.set({config}, () => {
+        console.log('Default configuration saved to storage');
+    });
+});
+
+// Load persisted configuration when the extension starts
+chrome.runtime.onStartup.addListener(() => {
+    chrome.storage.local.get('config', (data) => {
+        if (data.config) {
+            config = data.config;
+            console.log('Configuration loaded from storage:', config);
+        }
+    });
+});
 
 // A utility function to update the configuration, debounced for efficiency
 const updateConfig = debounce(async (newConfig: Config) => {
@@ -55,41 +75,25 @@ function debounce<T extends (...args: any[]) => Promise<void> | void>(func: T, w
     };
 }
 
-// Load persisted configuration when the extension starts
-chrome.runtime.onStartup.addListener(() => {
-    chrome.storage.local.get('config', (data) => {
-        if (data.config) {
-            config = data.config;
-            console.log('Configuration loaded from storage:', config);
-        }
-    });
-});
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url) {
-        const url = new URL(tab.url);
-        const newDomain = url.hostname;
-        const groupId = tab.groupId;
+    if (changeInfo.status !== 'complete' || !tab.url) return;
 
-        if (groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-            try {
-                const group = await chrome.tabGroups.get(groupId);
-                const groupDomain = group.title;
-
-                if (newDomain !== groupDomain) {
-                    await chrome.tabs.ungroup(tabId);
-                    await chrome.tabGroups.update(groupId, { collapsed: true });
-                }
-            } catch (error) {
-                console.error('Error managing tab group:', error);
+    if (config.removeFromGroupOnDomainChange && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        try {
+            const group = await chrome.tabGroups.get(tab.groupId);
+            if ((new URL(tab.url).hostname) !== group.title) {
+                await chrome.tabs.ungroup(tabId);
+                await chrome.tabGroups.update(tab.groupId, { collapsed: true });
+                await groupTabs(tab);
             }
+        } catch (error) {
+            console.error('Error managing tab group:', error);
         }
-        if (groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-            await groupTabs(tab);
-        }
+    } else if (tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        await groupTabs(tab);
     }
 });
-
 
 
 async function groupTabs(tab: chrome.tabs.Tab) {
@@ -97,32 +101,36 @@ async function groupTabs(tab: chrome.tabs.Tab) {
         const url = new URL(tab.url);
         const domain = url.hostname;
 
-        chrome.tabs.query({url: `*://*.${domain}/*`}, (existingTabs) => {
-            if (existingTabs.length > 1) {
-                const tabIds: number[] = [];
-                let groupId: number | undefined = undefined;
+        try {
+            chrome.tabs.query({url: `*://*.${domain}/*`}, (existingTabs) => {
+                if (existingTabs.length > 1) {
+                    const tabIds: number[] = [];
+                    let groupId: number | undefined = undefined;
 
-                existingTabs.forEach(t => {
-                    if (t.id !== undefined) {
-                        tabIds.push(t.id);
-                        if (groupId === undefined) {
-                            groupId = t.groupId;
+                    existingTabs.forEach(t => {
+                        if (t.id !== undefined) {
+                            tabIds.push(t.id);
+                            if (groupId === undefined) {
+                                groupId = t.groupId;
+                            }
                         }
-                    }
-                });
+                    });
 
-                if (groupId !== undefined && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-                    if (!tabIds.includes(tab.id!)) {
+                    if (groupId !== undefined && groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
+                        // if (tabIds.includes(tab.id!)) {
                         chrome.tabs.group({tabIds, groupId}, (group) => {
                             chrome.tabGroups.update(group, {title: domain, collapsed: false});
                         });
+                        // }
+                    } else {
+                        chrome.tabs.group({tabIds}, (group) => {
+                            chrome.tabGroups.update(group, {title: domain, collapsed: false});
+                        });
                     }
-                } else {
-                    chrome.tabs.group({tabIds}, (group) => {
-                        chrome.tabGroups.update(group, {title: domain, collapsed: false});
-                    });
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Error grouping tabs:', error);
+        }
     }
 }
