@@ -4,7 +4,13 @@
   "version": "1.0.0",
   "description": "An extension that solves the problem of too many tabs",
   "action": {
-    "default_popup": "index.html"
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
   "permissions": [
     "storage",

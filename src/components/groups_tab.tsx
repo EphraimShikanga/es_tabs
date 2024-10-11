@@ -48,7 +48,7 @@ const GroupTabs: React.FC<GroupTabsProps> = ({tabs}) => {
                         {/*@ts-expect-error*/}
                         <ListItemPrefix className={"bg-white/50 rounded-lg items-center p-1"}>
                             <img
-                                src={tab.favIconUrl ? tab.favIconUrl : "log.jpeg"}
+                                src={tab.favIconUrl ? tab.favIconUrl : "tabss.webp"}
                                 alt={tab.title}
                                 height={"30px"}
                                 width={"30px"}
