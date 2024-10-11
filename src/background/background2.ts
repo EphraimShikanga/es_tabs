@@ -91,19 +91,8 @@ chrome.tabs.onCreated.addListener(async () => {
 
 // Collapse all groups
 async function collapseAllGroups() {
-    const groups = await chrome.tabGroups.query({collapsed: false});
-    let delay = 500;
-    for (const group of groups) {
-        try {
-            await sleep(delay);
-            await chrome.tabGroups.update(group.id, {collapsed: true});
-        } catch (error) {
-            console.error(`Error collapsing group ${group.id}, retrying with more delay`, error);
-            delay += 200;
-            await sleep(delay);
-            await chrome.tabGroups.update(group.id, {collapsed: true});
-        }
-    }
+    const groups = await chrome.tabGroups.query({ collapsed: false });
+    await Promise.all(groups.map(group => chrome.tabGroups.update(group.id, { collapsed: true })));
 }
 
 // Event: Collapse the current group when another group or tab outside it is clicked
