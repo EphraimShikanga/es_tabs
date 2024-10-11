@@ -1,24 +1,26 @@
+import {sleep, debounce, validateConfig, Config, Message, domainGroupMap} from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
-
-interface Config {
-    [key: string]: any;
-    removeFromGroupOnDomainChange?: boolean;
-}
-
-type MessageType = 'updateConfig' | 'someOtherAction';
-
-interface Message<T = any> {
-    type: MessageType;
-    payload?: T; // Define your payload structure based on the message type
-}
 
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true
 };
+let currentExpandedGroupId: number | null = null;
 
-// Cache for domain -> groupId mapping
-const domainGroupMap: { [domain: string]: number } = {};
+// A utility function to update the configuration, debounced for efficiency
+const updateConfig = debounce(async (newConfig: Config) => {
+    if (!validateConfig(newConfig)) return;
+
+    config = {...config, ...newConfig};
+    console.log('Configuration Updated:', config);
+
+    try {
+        await chrome.storage.local.set({config});
+        console.log('Configuration saved to storage');
+    } catch (error) {
+        console.error('Failed to save configuration:', error);
+    }
+}, 200);
 
 // Save the configuration to chrome.storage for persistence across sessions
 chrome.runtime.onInstalled.addListener(() => {
@@ -37,30 +39,6 @@ chrome.runtime.onStartup.addListener(() => {
     });
 });
 
-// Function to validate configuration
-function validateConfig(newConfig: Config): boolean {
-    if (typeof newConfig.removeFromGroupOnDomainChange !== 'boolean') {
-        console.error('Invalid config: removeFromGroupOnDomainChange should be a boolean');
-        return false;
-    }
-    return true;
-}
-
-// A utility function to update the configuration, debounced for efficiency
-const updateConfig = debounce(async (newConfig: Config) => {
-    if (!validateConfig(newConfig)) return;
-
-    config = {...config, ...newConfig};
-    console.log('Configuration Updated:', config);
-
-    try {
-        await chrome.storage.local.set({config});
-        console.log('Configuration saved to storage');
-    } catch (error) {
-        console.error('Failed to save configuration:', error);
-    }
-}, 200);
-
 
 // Message Listener to handle messages from the popup UI
 chrome.runtime.onMessage.addListener(
@@ -78,15 +56,6 @@ chrome.runtime.onMessage.addListener(
         return true; // Keep the message channel open for asynchronous responses
     }
 );
-
-// Debounce utility function to throttle rapid successive calls
-function debounce<T extends (...args: any[]) => Promise<void> | void>(func: T, wait: number) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    return (...args: Parameters<T>) => {
-        if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
-    };
-}
 
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -112,6 +81,57 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab);
+    }
+});
+
+// Event: Collapse all groups when a new tab is created
+chrome.tabs.onCreated.addListener(async () => {
+    await collapseAllGroups();
+});
+
+// Collapse all groups
+async function collapseAllGroups() {
+    const groups = await chrome.tabGroups.query({collapsed: false});
+    let delay = 500;
+    for (const group of groups) {
+        try {
+            await sleep(delay);
+            await chrome.tabGroups.update(group.id, {collapsed: true});
+        } catch (error) {
+            console.error(`Error collapsing group ${group.id}, retrying with more delay`, error);
+            delay += 200;
+            await sleep(delay);
+            await chrome.tabGroups.update(group.id, {collapsed: true});
+        }
+    }
+}
+
+// Event: Collapse the current group when another group or tab outside it is clicked
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    const activeTab = await chrome.tabs.get(activeInfo.tabId);
+    let delay = 500;
+    try {
+        if (activeTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && activeTab.groupId !== currentExpandedGroupId) {
+            if (currentExpandedGroupId !== null) {
+                await sleep(delay);
+                await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});
+            }
+
+            await sleep(delay);
+            await chrome.tabGroups.update(activeTab.groupId, {collapsed: false});
+            currentExpandedGroupId = activeTab.groupId;
+        } else if (activeTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE && currentExpandedGroupId !== null) {
+            await sleep(delay);
+            await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});
+            currentExpandedGroupId = null;
+        }
+    } catch (error) {
+        console.error(`Error updating tab groups, retrying with more delay`, error);
+        if (currentExpandedGroupId !== null) {
+            delay += 200;
+            await sleep(delay);
+            await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});  // Retry collapsing after increased delay
+        }
     }
 });
 
@@ -145,6 +165,7 @@ async function groupTabs(tab: chrome.tabs.Tab) {
         if (domainGroupMap[domain]) {
             const groupId = domainGroupMap[domain];
             chrome.tabs.group({tabIds: [tab.id!], groupId}, async (group) => {
+                currentExpandedGroupId = group;
                 await chrome.tabGroups.update(group, {title: domain, collapsed: false});
             });
         } else {
@@ -153,7 +174,8 @@ async function groupTabs(tab: chrome.tabs.Tab) {
                     if (existingTabs.length > 1) {
                         const tabIds = existingTabs.map(t => t.id).filter(id => id !== undefined) as number[];
                         chrome.tabs.group({tabIds}, async (group) => {
-                            domainGroupMap[domain] = group; // Cache the new groupId
+                            domainGroupMap[domain] = group;
+                            currentExpandedGroupId = group;
                             await chrome.tabGroups.update(group, {title: domain, collapsed: false});
                         });
                     }
