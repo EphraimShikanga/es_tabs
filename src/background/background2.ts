@@ -57,27 +57,6 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status !== 'complete' || !tab.url) return;
-
-    if (config.removeFromGroupOnDomainChange && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-        try {
-            const group = await chrome.tabGroups.get(tab.groupId);
-            if ((new URL(tab.url).hostname) !== group.title) {
-                await chrome.tabs.ungroup(tabId);
-                await chrome.tabGroups.update(tab.groupId, {collapsed: true});
-                await groupTabs(tab);
-            }
-        } catch (error) {
-            console.error('Error managing tab group:', error);
-        }
-    } else if (tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-        await groupTabs(tab);
-    }
-});
-
-
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab);
