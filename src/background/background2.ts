@@ -1,4 +1,13 @@
-import {sleep, debounce, validateConfig, Config, Message, domainGroupMap} from "@/background/utils.ts";
+import {
+    collapseAllGroups,
+    Config,
+    debounce,
+    domainGroupMap,
+    Message,
+    sleep,
+    tabGroupMap,
+    validateConfig
+} from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
 
 // Configuration object to hold settings from the popup UI
@@ -6,6 +15,8 @@ let config: Config = {
     removeFromGroupOnDomainChange: true
 };
 let currentExpandedGroupId: number | null = null;
+let tabCreationBuffer: chrome.tabs.Tab[] = [];
+let isProcessingBuffer = false;
 
 // A utility function to update the configuration, debounced for efficiency
 const updateConfig = debounce(async (newConfig: Config) => {
@@ -57,26 +68,34 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url) {
-        debouncedTabUpdate(tabId, tab);
-    }
-});
+// Buffering tabs for batch processing and collapsing all groups when a new tab is created
+chrome.tabs.onCreated.addListener(async (tab) => {
+    tabCreationBuffer.push(tab);
 
-// Event: Collapse all groups when a new tab is created
-chrome.tabs.onCreated.addListener(async () => {
+    if (!isProcessingBuffer) {
+        isProcessingBuffer = true;
+        setTimeout(async () => {
+            const bufferCopy = [...tabCreationBuffer];
+            tabCreationBuffer = [];
+            await processTabBatch(bufferCopy);
+        }, 500); // Adjust delay as needed
+    }
     await collapseAllGroups();
 });
 
-// Collapse all groups
-async function collapseAllGroups() {
-    const groups = await chrome.tabGroups.query({ collapsed: false });
-    await Promise.all(groups.map(group => chrome.tabGroups.update(group.id, { collapsed: true })));
-}
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        debouncedTabUpdate(tabId, tab);
+        if (!tabGroupMap[tab.id!]) {
+            tabGroupMap[tab.id!] = tab.groupId;
+        }
+    }
+});
 
 // Event: Collapse the current group when another group or tab outside it is clicked
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const activeTab = await chrome.tabs.get(activeInfo.tabId);
+    // currentExpandedGroupId = null;
     let delay = 500;
     try {
         if (activeTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && activeTab.groupId !== currentExpandedGroupId) {
@@ -104,10 +123,71 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 
+// Process tabs in bulk when multiple tabs are created at once
+async function processTabBatch(tabs: chrome.tabs.Tab[]) {
+    try {
+        for (const tab of tabs) {
+            if (tab.url) {
+                await groupTabs(tab);
+            }
+        }
+    } catch (error) {
+        console.error('Error processing tab batch:', error);
+    } finally {
+        isProcessingBuffer = false;
+    }
+}
+
+// Monitor when a group is deleted and reset currentExpandedGroupId if it was the expanded group
+chrome.tabGroups.onRemoved.addListener(async (group) => {
+    if (group.id === currentExpandedGroupId) {
+        console.log(`Currently expanded group ${group.id} was deleted, resetting currentExpandedGroupId.`);
+        currentExpandedGroupId = null;
+    }
+    for (const domain in domainGroupMap) {
+        if (domainGroupMap[domain] === group.id) {
+            delete domainGroupMap[domain];
+        }
+    }
+
+    // Delete all keys in tabGroupMap whose values are the group.id
+    for (const tabId in tabGroupMap) {
+        if (tabGroupMap[tabId] === group.id) {
+            delete tabGroupMap[tabId];
+        }
+    }
+});
+
+// Monitor when a tab is ungrouped and reset currentExpandedGroupId if it was the expanded group
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (changeInfo.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId === currentExpandedGroupId) {
+        console.log(`Currently expanded group ${currentExpandedGroupId} was ungrouped, resetting currentExpandedGroupId.`);
+        currentExpandedGroupId = null;
+    }
+});
+
+// Monitor when tabs are removed and check if their group has only one tab left
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+    const group = tabGroupMap[tabId];
+    if (group) {
+        const tabs = await chrome.tabs.query({groupId: group});
+        if (tabs.length === 1) {
+            await chrome.tabs.ungroup(tabs[0].id!);
+            delete domainGroupMap[new URL(tabs[0].url!).hostname];
+        }
+    }
+    delete tabGroupMap[tabId];
+});
+
+
 const debouncedTabUpdate = debounce(async (tabId: number, tab: chrome.tabs.Tab) => {
     try {
         if (config.removeFromGroupOnDomainChange && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-            const group = await chrome.tabGroups.get(tab.groupId);
+            const group = await chrome.tabGroups.get(tab.groupId).catch(() => null);
+            if (!group) {
+                console.log(`Group with ID ${tab.groupId} no longer exists.`);
+                return;
+            }
             const tabDomain = new URL(tab.url!).hostname;
             if (tabDomain !== group.title) {
                 await Promise.all([
@@ -124,7 +204,6 @@ const debouncedTabUpdate = debounce(async (tabId: number, tab: chrome.tabs.Tab) 
     }
 }, 200);
 
-
 async function groupTabs(tab: chrome.tabs.Tab) {
     if (tab.url) {
         const url = new URL(tab.url);
@@ -132,8 +211,15 @@ async function groupTabs(tab: chrome.tabs.Tab) {
 
         if (domainGroupMap[domain]) {
             const groupId = domainGroupMap[domain];
+            const group = await chrome.tabGroups.get(groupId).catch(() => null);
+            if (!group) {
+                console.log(`Group with ID ${groupId} no longer exists.`);
+                delete domainGroupMap[domain];
+                return;
+            }
             chrome.tabs.group({tabIds: [tab.id!], groupId}, async (group) => {
                 currentExpandedGroupId = group;
+                tabGroupMap[tab.id!] = group;
                 await chrome.tabGroups.update(group, {title: domain, collapsed: false});
             });
         } else {
@@ -144,6 +230,7 @@ async function groupTabs(tab: chrome.tabs.Tab) {
                         chrome.tabs.group({tabIds}, async (group) => {
                             domainGroupMap[domain] = group;
                             currentExpandedGroupId = group;
+                            tabGroupMap[tab.id!] = group;
                             await chrome.tabGroups.update(group, {title: domain, collapsed: false});
                         });
                     }

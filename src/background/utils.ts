@@ -14,6 +14,7 @@ export interface Message<T = any> {
 
 // Cache for domain -> groupId mapping
 export const domainGroupMap: { [domain: string]: number } = {};
+export const tabGroupMap: { [tabId: number]: number } = {};
 
 // Utility function to sleep for a given amount of time
 export function sleep(ms: number): Promise<void> {
@@ -36,4 +37,10 @@ export function validateConfig(newConfig: Config): boolean {
         return false;
     }
     return true;
+}
+
+// Collapse all groups
+export async function collapseAllGroups() {
+    const groups = await chrome.tabGroups.query({ collapsed: false });
+    await Promise.all(groups.map(group => chrome.tabGroups.update(group.id, { collapsed: true })));
 }
