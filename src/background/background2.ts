@@ -159,10 +159,12 @@ chrome.tabGroups.onRemoved.addListener(async (group) => {
 });
 
 // Monitor when a tab is ungrouped and reset currentExpandedGroupId if it was the expanded group
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
-    if (changeInfo.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId === currentExpandedGroupId) {
-        console.log(`Currently expanded group ${currentExpandedGroupId} was ungrouped, resetting currentExpandedGroupId.`);
-        currentExpandedGroupId = null;
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
+        delete tabGroupMap[tabId];
+    }
+    if (tabGroupMap[tabId] !== changeInfo.groupId) {
+        delete tabGroupMap[tabId];
     }
 });
 
