@@ -1,14 +1,15 @@
 import {
+    checkIrrelevantTabs,
+    collapseAllGroups,
     Config,
+    debounce,
+    domainGroupMap,
     Message,
+    sleep,
     startInactivityTimer,
     stopInactivityTimer,
-    collapseAllGroups,
-    validateConfig,
-    debounce,
-    sleep,
-    domainGroupMap,
-    tabGroupMap
+    tabGroupMap,
+    validateConfig
 } from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
 
@@ -56,13 +57,16 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Message Listener to handle messages from the popup UI
 chrome.runtime.onMessage.addListener(
-    (message: Message, _sender: MessageSender, sendResponse: (response: { status: string }) => void) => {
+    (message: Message, _sender: MessageSender, sendResponse) => {
         if (message.type === 'updateConfig' && message.payload) {
             updateConfig(message.payload);
             sendResponse({status: 'success'});
-        } else if (message.type === 'someOtherAction') {
-            // Handle other actions here
-            sendResponse({status: 'handled'}); // Example response
+        } else if (message.type === 'fetchTabs') {
+            chrome.tabs.query({}, (tabs) => {
+                const relevantTabs = tabs.filter(tab => !checkIrrelevantTabs(tab));
+                console.log(relevantTabs);
+                sendResponse({ tabs: relevantTabs });
+            });
         } else {
             sendResponse({status: 'unknown action'});
         }
@@ -97,7 +101,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Event: Collapse the current group when another group or tab outside it is clicked
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const activeTab = await chrome.tabs.get(activeInfo.tabId);
-    // currentExpandedGroupId = null;
     let delay = 500;
     try {
         if (activeTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && activeTab.groupId !== currentExpandedGroupId) {
@@ -169,6 +172,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (tabGroupMap[tabId] !== changeInfo.groupId) {
         delete tabGroupMap[tabId];
     }
+
 });
 
 // Monitor when tabs are removed and check if their group has only one tab left

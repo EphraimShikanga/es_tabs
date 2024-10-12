@@ -18,10 +18,14 @@ function App() {
     const [debouncedSearchQuery] = useDebounce(searchQuery, 1000);
 
     useEffect(() => {
+                console.log("ephraim");
         const updateTabCount = async () => {
             try {
-                const tabs = (await chrome.tabs.query({})).filter((tab) => !tab.url?.startsWith("chrome://"));
-                setTabs(tabs);
+                chrome.runtime.sendMessage({ type: 'fetchTabs' }, (response) => {
+                    if (response?.tabs) {
+                        setTabs(response.tabs);
+                    }
+                });
             } catch (error) {
                 console.error("Error fetching tabs: ", error);
             }

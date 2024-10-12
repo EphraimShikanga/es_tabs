@@ -1,10 +1,9 @@
 // utils for the background script
 
-type MessageType = 'updateConfig' | 'someOtherAction';
+type MessageType = 'updateConfig' | 'fetchTabs' ;
 
 export interface Config {
     [key: string]: any;
-
     removeFromGroupOnDomainChange?: boolean;
 }
 
@@ -17,6 +16,7 @@ export interface Message<T = any> {
 export const domainGroupMap: { [domain: string]: number } = {};
 export const tabGroupMap: { [tabId: number]: number } = {};
 const tabInactivityTimers = new Map<number, NodeJS.Timeout>();
+// export const cachedTabs: chrome.tabs.Tab[] = [];
 
 
 // Utility function to sleep for a given amount of time
@@ -59,6 +59,7 @@ async function hibernateTab(tabId: number) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
     chrome.tabs.discard(tabId, () => {
+        // cachedTabs.splice(cachedTabs.findIndex(tab => tab.id === tabId), 1);
         tabInactivityTimers.delete(tabId);
     });
 }
@@ -77,4 +78,17 @@ export function stopInactivityTimer(tabId: number) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
         tabInactivityTimers.delete(tabId);
     }
+}
+
+
+export function checkIrrelevantTabs(tab: chrome.tabs.Tab): boolean {
+    const irrelevantPrefixes = [
+        'chrome://',
+        'chrome-extension://',
+        'chrome-devtools://',
+        'chrome-search://',
+        'about:'
+    ];
+
+    return irrelevantPrefixes.some(prefix => tab.url?.startsWith(prefix));
 }
