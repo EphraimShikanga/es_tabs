@@ -3,22 +3,21 @@ import {Search} from "lucide-react";
 import {useEffect, useMemo, useState} from "react";
 import {useDebounce} from 'use-debounce';
 import ChromeTab from "@/components/chrome_tab.tsx";
-// import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
-// import ExtensionTab from "@/components/extension_tab.tsx";
+import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
+import ExtensionTab from "@/components/extension_tab.tsx";
 // import GroupsTab from "@/components/groups_tab.tsx";
-// import WorkspaceTab from "@/components/workspace_tab.tsx";
-// import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
+import WorkspaceTab from "@/components/workspace_tab.tsx";
+import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
 
 
 function App() {
-    // const [activeTab, setActiveTab] = React.useState("Workspaces");
+    const [activeTab, setActiveTab] = useState("Workspaces");
     const [tabs, setTabs] = useState<chrome.tabs.Tab[]>([]);
     const [searchQuery, setSearchQuery] = useState<string>("");
 
     const [debouncedSearchQuery] = useDebounce(searchQuery, 1000);
 
     useEffect(() => {
-                console.log("ephraim");
         const updateTabCount = async () => {
             try {
                 chrome.runtime.sendMessage({ type: 'fetchTabs' }, (response) => {
@@ -95,51 +94,48 @@ function App() {
                             <ChromeTab key={index} tab={tab}/>
                         ))}
                 </div>
+
+                < div
+                    className = {`pl-0 p-1 relative w-full ${tabs.length === 0 || filteredTabs.length === 0 ? "h-[92%]" : "h-[78%]"}`
+                    }>
+                    <
+                        Tabs
+                        value = {activeTab}
+                        className = {"h-full"} >
+                        {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
+                        {/*@ts-expect-error*/}
+                        <TabsHeader
+                            defaultValue={"Groups"}
+                            className={"rounded-none border-blue-50 bg-transparent p-0 pl-2 group/tab"}
+                            indicatorProps={{className: "bg-transparent border-b-2 border-[#1e293b] shadow-none rounded-none",}}
+                        >
+                            <ExtensionTab value={"Workspaces"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+                            <ExtensionTab value={"Groups"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+                            <ExtensionTab value={"Closed"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+                            <ExtensionTab value={"Settings"} activeTab={activeTab}
+                                          onClick={(value) => setActiveTab(value)}/>
+
+                        </TabsHeader>
+                        {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
+                        {/*@ts-expect-error*/}
+                        <TabsBody
+                            // defaultValue={"Groups"}
+                            className={"h-full w-full rounded-lg p-2 "}
+                        >
+                            <WorkspaceProvider>
+                                <WorkspaceTab value={"Workspaces"}/>
+                                {/*<GroupsTab value={"Groups"}/>*/}
+                            </WorkspaceProvider>
+                        </TabsBody>
+                    </Tabs>
+                </div>
+
             </div>
         </div>
     );
 }
 
 export default App
-
-
-// < div
-// className = {`pl-0 p-1 relative w-full ${tabs.length === 0 || filteredTabs.length === 0 ? "h-[92%]" : "h-[78%]"}`
-// }>
-// <
-// Tabs
-// value = {activeTab}
-// className = {"h-full"} >
-//     {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
-// {/*@ts-expect-error*/
-// }
-// <TabsHeader
-//     defaultValue={"Groups"}
-//     className={"rounded-none border-blue-50 bg-transparent p-0 pl-2 group/tab"}
-//     indicatorProps={{className: "bg-transparent border-b-2 border-[#1e293b] shadow-none rounded-none",}}
-// >
-//     <ExtensionTab value={"Workspaces"} activeTab={activeTab}
-//                   onClick={(value) => setActiveTab(value)}/>
-//     <ExtensionTab value={"Groups"} activeTab={activeTab}
-//                   onClick={(value) => setActiveTab(value)}/>
-//     <ExtensionTab value={"Closed"} activeTab={activeTab}
-//                   onClick={(value) => setActiveTab(value)}/>
-//     <ExtensionTab value={"Settings"} activeTab={activeTab}
-//                   onClick={(value) => setActiveTab(value)}/>
-//
-// </TabsHeader>
-// {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/
-// }
-// {/*@ts-expect-error*/
-// }
-// <TabsBody
-//     // defaultValue={"Groups"}
-//     className={"h-full w-full rounded-lg p-2 "}
-// >
-//     <WorkspaceProvider>
-//         <WorkspaceTab value={"Workspaces"}/>
-//         <GroupsTab value={"Groups"}/>
-//     </WorkspaceProvider>
-// </TabsBody>
-// </Tabs>
-// </div>

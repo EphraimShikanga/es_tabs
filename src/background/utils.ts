@@ -1,6 +1,13 @@
 // utils for the background script
 
-type MessageType = 'updateConfig' | 'fetchTabs' ;
+type MessageType = 'updateConfig' | 'fetchTabs' | 'fetchWorkspaces' |'switchWorkspace' ;
+export interface Workspace {
+    id: number;
+    title: string;
+    tabs: chrome.tabs.Tab[];
+    groups: chrome.tabGroups.TabGroup[];
+    isCurrent: boolean;
+}
 
 export interface Config {
     [key: string]: any;

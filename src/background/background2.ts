@@ -9,7 +9,8 @@ import {
     startInactivityTimer,
     stopInactivityTimer,
     tabGroupMap,
-    validateConfig
+    validateConfig,
+    Workspace
 } from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
 
@@ -42,17 +43,97 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.set({config}, () => {
         console.log('Default configuration saved to storage');
     });
+    chrome.storage.local.set({workspaces: [currentSpace], lastActiveWorkspaceId: lastActiveWorkspaceId }, () => {
+        console.log('Default workspaces saved to storage');
+    });
 });
 
+let spaces: Workspace[] = [];
+let currentSpace: Workspace = {
+    id: 1,
+    title: "Default",
+    tabs: [],
+    groups: [],
+    isCurrent: true,
+};
+const lastActiveWorkspaceId: number = 1;
+
 // Load persisted configuration when the extension starts
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
     chrome.storage.local.get('config', (data) => {
         if (data.config) {
             config = data.config;
             console.log('Configuration loaded from storage:', config);
         }
     });
+
+    try {
+        const {
+            lastActiveWorkspaceId,
+            workspaces
+        } = await chrome.storage.local.get(['lastActiveWorkspaceId', 'workspaces']);
+
+        if (lastActiveWorkspaceId && workspaces) {
+            const lastWorkspace = workspaces.find((workspace: Workspace) => workspace.id === lastActiveWorkspaceId);
+            spaces = workspaces;
+
+            if (lastWorkspace) {
+                await loadWorkspaceTabs(lastWorkspace);
+                currentSpace = lastWorkspace;
+                console.log('Loaded last active workspace:', lastWorkspace);
+            } else {
+                console.log('Last active workspace not found.');
+            }
+        } else {
+            console.log('No last active workspace ID or workspaces found.');
+        }
+    } catch (error) {
+        console.error('Error loading last active workspace:', error);
+    }
+
+
 });
+
+async function switchWorkspace(workspaceId: number) {
+    const currentWorkspace = spaces.find((workspace: Workspace) => workspace.id === workspaceId);
+    let lastActiveWorkspace = spaces.find((workspace: Workspace) => workspace.isCurrent);
+
+    if (currentWorkspace && lastActiveWorkspace) {
+        currentSpace = {...currentWorkspace, isCurrent: true};
+        lastActiveWorkspace = {
+            ...lastActiveWorkspace,
+            tabs: await chrome.tabs.query({}),
+            groups: await chrome.tabGroups.query({}),
+            isCurrent: false
+        };
+
+        spaces = spaces.map((workspace: Workspace ) => {
+            if (workspace) {
+                if (workspace.id === currentWorkspace.id) {
+                    return currentSpace;
+                } else if (workspace.id === lastActiveWorkspace!.id) {
+                    return lastActiveWorkspace;
+                } else {
+                    return workspace;
+                }
+            }
+        }).filter((workspace): workspace is Workspace => workspace !== undefined);
+
+        // Save the current workspace ID to storage
+        await chrome.storage.local.set({lastActiveWorkspaceId: workspaceId});
+        await chrome.storage.local.set({workspaces: spaces});
+        console.log('Switched to workspace:', currentWorkspace);
+
+        // Load the tabs and groups for the current workspace
+        await loadWorkspaceTabs(currentWorkspace);
+    }
+}
+
+async function loadWorkspaceTabs(workspace: Workspace) {
+    for (const tab of workspace.tabs) {
+        await chrome.tabs.create({url: tab.url});
+    }
+}
 
 
 // Message Listener to handle messages from the popup UI
@@ -65,10 +146,15 @@ chrome.runtime.onMessage.addListener(
             chrome.tabs.query({}, (tabs) => {
                 const relevantTabs = tabs.filter(tab => !checkIrrelevantTabs(tab));
                 console.log(relevantTabs);
-                sendResponse({ tabs: relevantTabs });
+                sendResponse({tabs: relevantTabs});
             });
-        } else {
-            sendResponse({status: 'unknown action'});
+        } else if (message.type === 'fetchWorkspaces') {
+            sendResponse({workspaces: spaces});
+        }
+        else if (message.type === 'switchWorkspace' && message.payload) {
+            switchWorkspace(message.payload).then(() => {
+                sendResponse({status: 'success'});
+            });
         }
 
         return true; // Keep the message channel open for asynchronous responses
@@ -94,6 +180,8 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab);
+        currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
+        currentSpace.tabs.push(tab);
         startInactivityTimer(tabId, config.hibernationTime);
     }
 });
@@ -150,12 +238,13 @@ chrome.tabGroups.onRemoved.addListener(async (group) => {
         console.log(`Currently expanded group ${group.id} was deleted, resetting currentExpandedGroupId.`);
         currentExpandedGroupId = null;
     }
+    currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== group.id);
+
     for (const domain in domainGroupMap) {
         if (domainGroupMap[domain] === group.id) {
             delete domainGroupMap[domain];
         }
     }
-
     // Delete all keys in tabGroupMap whose values are the group.id
     for (const tabId in tabGroupMap) {
         if (tabGroupMap[tabId] === group.id) {
@@ -185,6 +274,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
             delete domainGroupMap[new URL(tabs[0].url!).hostname];
         }
     }
+    currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
     delete tabGroupMap[tabId];
     stopInactivityTimer(tabId);
 });
@@ -230,7 +320,9 @@ async function groupTabs(tab: chrome.tabs.Tab) {
             chrome.tabs.group({tabIds: [tab.id!], groupId}, async (group) => {
                 currentExpandedGroupId = group;
                 tabGroupMap[tab.id!] = group;
-                await chrome.tabGroups.update(group, {title: domain, collapsed: false});
+                chrome.tabGroups.update(group, {title: domain, collapsed: false}, (group) => {
+                    currentSpace.groups.push(group);
+                });
             });
         } else {
             try {
