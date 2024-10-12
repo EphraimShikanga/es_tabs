@@ -184,6 +184,7 @@ async function switchWorkspace(workspaceId: number) {
             console.log('Switched to workspace:', currentWorkspace);
 
             // Load the tabs and groups for the current workspace
+            lastActiveWorkspace.tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
             await loadWorkspaceTabs(currentWorkspace);
         }
     } catch (error) {
@@ -195,6 +196,7 @@ async function loadWorkspaceTabs(workspace: Workspace) {
     for (const tab of workspace.tabs) {
         await chrome.tabs.create({url: tab.url});
     }
+
 }
 
 
