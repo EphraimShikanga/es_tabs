@@ -53,7 +53,6 @@ export async function collapseAllGroups() {
 async function hibernateTab(tabId: number) {
     const [activeTab] = await chrome.tabs.query({active: true, currentWindow: true});
     if (activeTab && activeTab.id === tabId) {
-        console.log(`Tab ${tabId} is active and will not be hibernated.`);
         return;
     }
     if (tabInactivityTimers.has(tabId)) {
