@@ -1,6 +1,6 @@
 // utils for the background script
 
-type MessageType = 'updateConfig' | 'fetchTabs' | 'fetchWorkspaces' |'switchWorkspace' ;
+type MessageType = 'updateConfig' | 'fetchTabs' | 'createNewWorkspace' | 'fetchWorkspaces' |'switchWorkspace' ;
 export interface Workspace {
     id: number;
     title: string;

@@ -133,7 +133,7 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                     <ListItemSuffix>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
-                        <IconButton size={"24px"} variant="text" color="blue-gray" onClick={
+                        <IconButton size={"md"} variant="text" color="blue-gray" onClick={
                             () => {
                                 const updatedWorkspaces = workspaces.filter(w => w.id !== workspace.id);
                                 chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
@@ -216,7 +216,7 @@ const NewWorkspace: React.FC<NewWorkspaceProps> = ({newWorkspaceName, setNewWork
 const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newWorkspaceName, setNewWorkspaceName] = useState("");
-    const {workspaces, setWorkspaces} = useWorkspace();
+    const {workspaces} = useWorkspace();
     const isDuplicate = workspaces.some(workspace => workspace.title === newWorkspaceName.trim());
 
 
@@ -224,31 +224,39 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
         setIsAdding(true);
     };
 
-    const handleCreateWorkspace = async () => {
+    const handleCreateWorkspace = () => {
         if (newWorkspaceName.trim()) {
-            chrome.tabGroups.query({}, (groups) => {
-                chrome.tabs.query({windowType: "normal"}, (tabs) => {
-                    const updatedWorkspaces = workspaces.map(workspace =>
-                        workspace.isCurrent ? {...workspace, tabs: tabs, groups: groups, isCurrent: false} : workspace
-                    );
-                    const newId = Math.floor(Math.random() * 1000000);
-                    const toSave = [...updatedWorkspaces, {
-                        id: newId,
-                        title: newWorkspaceName,
-                        tabs: [],
-                        groups: [],
-                        isCurrent: true
-                    }];
-                    setWorkspaces(toSave);
+            chrome.runtime.sendMessage({type: 'createNewWorkspace', payload: newWorkspaceName}, (response) => {
+                if (response!.status === 'success') {
+                    console.log("clicked", response);
+                    // setWorkspaces(response.workspaces);
                     setNewWorkspaceName("");
                     setIsAdding(false);
-
-                    chrome.storage.local.set({'workspaces': toSave}, async () => {
-                        tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                        await chrome.tabs.create({url: "chrome://newtab", active: true});
-                    });
-                });
+                }
             });
+            // chrome.tabGroups.query({}, (groups) => {
+            //     chrome.tabs.query({windowType: "normal"}, (tabs) => {
+            //         const updatedWorkspaces = workspaces.map(workspace =>
+            //             workspace.isCurrent ? {...workspace, tabs: tabs, groups: groups, isCurrent: false} : workspace
+            //         );
+            //         const newId = Math.floor(Math.random() * 1000000);
+            //         const toSave = [...updatedWorkspaces, {
+            //             id: newId,
+            //             title: newWorkspaceName,
+            //             tabs: [],
+            //             groups: [],
+            //             isCurrent: true
+            //         }];
+            //         setWorkspaces(toSave);
+            //         setNewWorkspaceName("");
+            //         setIsAdding(false);
+            //
+            //         chrome.storage.local.set({'workspaces': toSave}, async () => {
+            //             tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+            //             await chrome.tabs.create({url: "chrome://newtab", active: true});
+            //         });
+            //     });
+            // });
         }
     };
 
@@ -266,7 +274,8 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
                     <div className="flex gap-2">
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
-                        <Button disabled={isDuplicate} onClick={handleCreateWorkspace}
+                        <Button disabled={isDuplicate || !newWorkspaceName.trim()}
+                                onClick={() => handleCreateWorkspace()}
                                 className="rounded-lg mb-1 hover:bg-blue-gray-100/20 p-2 text-xs border border-white text-slate-200 bg-[#1e293b]">Create</Button>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
