@@ -4,6 +4,7 @@ type MessageType = 'updateConfig' | 'someOtherAction';
 
 export interface Config {
     [key: string]: any;
+
     removeFromGroupOnDomainChange?: boolean;
 }
 
@@ -15,6 +16,8 @@ export interface Message<T = any> {
 // Cache for domain -> groupId mapping
 export const domainGroupMap: { [domain: string]: number } = {};
 export const tabGroupMap: { [tabId: number]: number } = {};
+const tabInactivityTimers = new Map<number, NodeJS.Timeout>();
+
 
 // Utility function to sleep for a given amount of time
 export function sleep(ms: number): Promise<void> {
@@ -41,6 +44,38 @@ export function validateConfig(newConfig: Config): boolean {
 
 // Collapse all groups
 export async function collapseAllGroups() {
-    const groups = await chrome.tabGroups.query({ collapsed: false });
-    await Promise.all(groups.map(group => chrome.tabGroups.update(group.id, { collapsed: true })));
+    const groups = await chrome.tabGroups.query({collapsed: false});
+    await Promise.all(groups.map(group => chrome.tabGroups.update(group.id, {collapsed: true})));
+}
+
+
+// Function to hibernate a tab
+async function hibernateTab(tabId: number) {
+    const [activeTab] = await chrome.tabs.query({active: true, currentWindow: true});
+    if (activeTab && activeTab.id === tabId) {
+        console.log(`Tab ${tabId} is active and will not be hibernated.`);
+        return;
+    }
+    if (tabInactivityTimers.has(tabId)) {
+        clearTimeout(tabInactivityTimers.get(tabId)!);
+    }
+    chrome.tabs.discard(tabId, () => {
+        tabInactivityTimers.delete(tabId);
+    });
+}
+
+// Start or reset the inactivity timer for a tab
+export function startInactivityTimer(tabId: number, inactivityLimit: number) {
+    if (tabInactivityTimers.has(tabId)) {
+        clearTimeout(tabInactivityTimers.get(tabId)!);
+    }
+    const timeout = setTimeout(() => hibernateTab(tabId), inactivityLimit);
+    tabInactivityTimers.set(tabId, timeout);
+}
+
+export function stopInactivityTimer(tabId: number) {
+    if (tabInactivityTimers.has(tabId)) {
+        clearTimeout(tabInactivityTimers.get(tabId)!);
+        tabInactivityTimers.delete(tabId);
+    }
 }

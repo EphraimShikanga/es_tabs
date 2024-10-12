@@ -1,18 +1,21 @@
 import {
-    collapseAllGroups,
     Config,
-    debounce,
-    domainGroupMap,
     Message,
+    startInactivityTimer,
+    stopInactivityTimer,
+    collapseAllGroups,
+    validateConfig,
+    debounce,
     sleep,
-    tabGroupMap,
-    validateConfig
+    domainGroupMap,
+    tabGroupMap
 } from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
 
 // Configuration object to hold settings from the popup UI
 let config: Config = {
-    removeFromGroupOnDomainChange: true
+    removeFromGroupOnDomainChange: true,
+    hibernationTime: 30000
 };
 let currentExpandedGroupId: number | null = null;
 let tabCreationBuffer: chrome.tabs.Tab[] = [];
@@ -81,14 +84,13 @@ chrome.tabs.onCreated.addListener(async (tab) => {
         }, 500); // Adjust delay as needed
     }
     await collapseAllGroups();
+    startInactivityTimer(tab.id!, config.hibernationTime);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab);
-        if (!tabGroupMap[tab.id!]) {
-            tabGroupMap[tab.id!] = tab.groupId;
-        }
+        startInactivityTimer(tabId, config.hibernationTime);
     }
 });
 
@@ -120,6 +122,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
             await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});  // Retry collapsing after increased delay
         }
     }
+    startInactivityTimer(activeInfo.tabId, config.hibernationTime);
 });
 
 
@@ -179,6 +182,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
         }
     }
     delete tabGroupMap[tabId];
+    stopInactivityTimer(tabId);
 });
 
 
