@@ -48,7 +48,7 @@ function TrashIcon() {
 
 const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
     const [currentWorkspaceTabs, setCurrentWorkspaceTabs] = useState(0);
-    const {workspaces, setWorkspaces} = useWorkspace();
+    // const {workspaces, setWorkspaces} = useWorkspace();
     chrome.tabs.query({windowType: "normal"}, (tabs) => {
         setCurrentWorkspaceTabs(tabs.length);
     });
@@ -141,28 +141,34 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                         {/*@ts-expect-error*/}
                         <IconButton size={"md"} variant="text" color="blue-gray" onClick={
                             () => {
-                                const updatedWorkspaces = workspaces.filter(w => w.id !== workspace.id);
-                                chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
-                                    setWorkspaces(updatedWorkspaces);
-                                    console.log("Workspace deleted successfully");
-
-                                    if (workspace.isCurrent) {
-                                        const defaultWorkspace = updatedWorkspaces.find(w => w.id === 1);
-                                        if (defaultWorkspace) {
-                                            chrome.tabs.query({windowType: "normal"}, (tabs) => {
-                                                tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                                                defaultWorkspace.tabs.forEach((tab) => {
-                                                    chrome.tabs.create({url: tab.url}).then(() => {
-                                                        console.log('Tab created successfully');
-                                                    }).catch((error) => {
-                                                        console.error('Error creating tab:', error);
-                                                    });
-                                                });
-
-                                            });
-                                        }
+                                chrome.runtime.sendMessage({type: 'deleteWorkspace', payload: workspace.id}, (response) => {
+                                    if (response!.status === 'success') {
+                                        console.log("clicked", response);
+                                        // setWorkspaces(response.workspaces);
                                     }
                                 });
+                                // const updatedWorkspaces = workspaces.filter(w => w.id !== workspace.id);
+                                // chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
+                                //     setWorkspaces(updatedWorkspaces);
+                                //     console.log("Workspace deleted successfully");
+                                //
+                                //     if (workspace.isCurrent) {
+                                //         const defaultWorkspace = updatedWorkspaces.find(w => w.id === 1);
+                                //         if (defaultWorkspace) {
+                                //             chrome.tabs.query({windowType: "normal"}, (tabs) => {
+                                //                 tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                                //                 defaultWorkspace.tabs.forEach((tab) => {
+                                //                     chrome.tabs.create({url: tab.url}).then(() => {
+                                //                         console.log('Tab created successfully');
+                                //                     }).catch((error) => {
+                                //                         console.error('Error creating tab:', error);
+                                //                     });
+                                //                 });
+                                //
+                                //             });
+                                //         }
+                                //     }
+                                // });
                             }
                         }>
                             <TrashIcon/>

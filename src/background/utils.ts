@@ -1,6 +1,8 @@
 // utils for the background script
 
-type MessageType = 'updateConfig' | 'fetchTabs' | 'createNewWorkspace' | 'fetchWorkspaces' |'switchWorkspace' ;
+type MessageType = 'updateConfig' | 'fetchTabs' | 'createNewWorkspace' |
+    'fetchWorkspaces' | 'switchWorkspace' | 'deleteWorkspace';
+
 export interface Workspace {
     id: number;
     title: string;
@@ -11,6 +13,7 @@ export interface Workspace {
 
 export interface Config {
     [key: string]: any;
+
     removeFromGroupOnDomainChange?: boolean;
 }
 

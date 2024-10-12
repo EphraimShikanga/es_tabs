@@ -43,7 +43,7 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.set({config}, () => {
         console.log('Default configuration saved to storage');
     });
-    chrome.storage.local.set({workspaces: [currentSpace], lastActiveWorkspaceId: lastActiveWorkspaceId }, () => {
+    chrome.storage.local.set({workspaces: [currentSpace], lastActiveWorkspaceId: lastActiveWorkspaceId}, () => {
         console.log('Default workspaces saved to storage');
     });
 });
@@ -106,13 +106,16 @@ chrome.runtime.onMessage.addListener(
             });
         } else if (message.type === 'fetchWorkspaces') {
             sendResponse({workspaces: spaces});
-        }
-        else if (message.type === 'createNewWorkspace' && message.payload) {
+        } else if (message.type === 'createNewWorkspace' && message.payload) {
             createWorkspace(message.payload).then(() => {
                 sendResponse({status: 'success'});
             });
-        }else if (message.type === 'switchWorkspace' && message.payload) {
+        } else if (message.type === 'switchWorkspace' && message.payload) {
             switchWorkspace(message.payload).then(() => {
+                sendResponse({status: 'success'});
+            });
+        } else if (message.type === 'deleteWorkspace' && message.payload) {
+            deleteWorkspace(message.payload).then(() => {
                 sendResponse({status: 'success'});
             });
         }
@@ -120,6 +123,31 @@ chrome.runtime.onMessage.addListener(
         return true; // Keep the message channel open for asynchronous responses
     }
 );
+
+async function deleteWorkspace(workspaceId: number) {
+    try {
+        const workspace = spaces.find((workspace: Workspace) => workspace.id === workspaceId);
+        if (workspace) {
+            const lastActiveWorkspace = workspaceId === currentSpace.id;
+            let newActiveWorkspace;
+            if (lastActiveWorkspace) {
+                newActiveWorkspace = spaces.find((workspace: Workspace) => workspace.id === 1)!;
+            }
+            spaces = spaces.filter((workspace: Workspace) => workspace.id !== workspaceId);
+            if (newActiveWorkspace) {
+                newActiveWorkspace.isCurrent = true;
+                currentSpace.tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+                currentSpace = newActiveWorkspace;
+                await loadWorkspaceTabs(newActiveWorkspace);
+                await chrome.storage.local.set({lastActiveWorkspaceId: newActiveWorkspace.id});
+            }
+            await chrome.storage.local.set({workspaces: spaces});
+        }
+
+    } catch (error) {
+        console.error('Error deleting workspace:', error);
+    }
+}
 
 
 async function createWorkspace(title: string) {
