@@ -128,7 +128,7 @@ async function createWorkspace(title: string) {
         const newWorkspace: Workspace = {
             id: newId,
             title,
-            tabs: [],
+            tabs: [await chrome.tabs.create({url: 'chrome://newtab'})],
             groups: [],
             isCurrent: true
         };
@@ -145,6 +145,8 @@ async function createWorkspace(title: string) {
         });
         spaces.push(newWorkspace);
         currentSpace = newWorkspace;
+        lastActiveWorkspace.tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
+        // await chrome.tabs.create({url: 'chrome://newtab'});
         await chrome.storage.local.set({lastActiveWorkspaceId: newId});
         await chrome.storage.local.set({workspaces: spaces});
     } catch (e) {
@@ -196,7 +198,6 @@ async function loadWorkspaceTabs(workspace: Workspace) {
     for (const tab of workspace.tabs) {
         await chrome.tabs.create({url: tab.url});
     }
-
 }
 
 
