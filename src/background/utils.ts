@@ -11,6 +11,24 @@ export interface Workspace {
     isCurrent: boolean;
 }
 
+export const defaultTab: chrome.tabs.Tab = {
+    selected: true,
+    id: -1,
+    url: 'chrome://newtab/',
+    title: 'New Tab',
+    favIconUrl: 'tabss.webp',
+    active: true,
+    pinned: false,
+    discarded: false,
+    autoDiscardable: true,
+    mutedInfo: {muted: false},
+    groupId: chrome.tabGroups.TAB_GROUP_ID_NONE,
+    windowId: -1,
+    index: -1,
+    highlighted: true,
+    incognito: false
+};
+
 export interface Config {
     [key: string]: any;
 
@@ -61,7 +79,7 @@ export async function collapseAllGroups() {
 
 // Function to hibernate a tab
 async function hibernateTab(tabId: number) {
-    const [activeTab] = await chrome.tabs.query({active: true, currentWindow: true});
+    const [activeTab] = await chrome.tabs.query({active: true});
     if (activeTab && activeTab.id === tabId) {
         return;
     }
@@ -69,7 +87,6 @@ async function hibernateTab(tabId: number) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
     chrome.tabs.discard(tabId, () => {
-        // cachedTabs.splice(cachedTabs.findIndex(tab => tab.id === tabId), 1);
         tabInactivityTimers.delete(tabId);
     });
 }

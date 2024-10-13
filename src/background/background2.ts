@@ -3,6 +3,7 @@ import {
     collapseAllGroups,
     Config,
     debounce,
+    defaultTab,
     domainGroupMap,
     Message,
     sleep,
@@ -43,7 +44,7 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.set({config}, () => {
         console.log('Default configuration saved to storage');
     });
-    chrome.storage.local.set({workspaces: [currentSpace], lastActiveWorkspaceId: lastActiveWorkspaceId}, () => {
+    chrome.storage.local.set({workspaces: [], lastActiveWorkspaceId: 1}, () => {
         console.log('Default workspaces saved to storage');
     });
 });
@@ -51,12 +52,12 @@ chrome.runtime.onInstalled.addListener(() => {
 let spaces: Workspace[] = [];
 let currentSpace: Workspace = {
     id: 1,
-    title: "Default",
+    title: "",
     tabs: [],
     groups: [],
-    isCurrent: true,
+    isCurrent: false,
 };
-const lastActiveWorkspaceId: number = 1;
+// const lastActiveWorkspaceId: number = 1;
 
 // Load persisted configuration when the extension starts
 chrome.runtime.onStartup.addListener(async () => {
@@ -68,25 +69,18 @@ chrome.runtime.onStartup.addListener(async () => {
     });
 
     try {
-        const {
-            lastActiveWorkspaceId,
-            workspaces
-        } = await chrome.storage.local.get(['lastActiveWorkspaceId', 'workspaces']);
-
-        if (lastActiveWorkspaceId && workspaces) {
-            const lastWorkspace = workspaces.find((workspace: Workspace) => workspace.id === lastActiveWorkspaceId);
-            spaces = workspaces;
-
-            if (lastWorkspace) {
-                await loadWorkspaceTabs(lastWorkspace);
-                currentSpace = lastWorkspace;
-                console.log('Loaded last active workspace:', lastWorkspace);
-            } else {
-                console.log('Last active workspace not found.');
+        chrome.storage.local.get(['workspaces', 'lastActiveWorkspaceId'], async (data) => {
+            if (data.workspaces && data.lastActiveWorkspaceId) {
+                if (data.workspaces.length === 0 && data.lastActiveWorkspaceId === 1) {
+                    await createWorkspace("Default");
+                    console.log("No workspaces found, creating default workspace");
+                } else {
+                    spaces = data.workspaces;
+                    currentSpace = spaces.find((workspace: Workspace) => workspace.id === data.lastActiveWorkspaceId)!;
+                    console.log('Workspaces loaded from storage:', spaces, 'Current workspace:', currentSpace);
+                }
             }
-        } else {
-            console.log('No last active workspace ID or workspaces found.');
-        }
+        });
     } catch (error) {
         console.error('Error loading last active workspace:', error);
     }
@@ -101,11 +95,16 @@ chrome.runtime.onMessage.addListener(
         } else if (message.type === 'fetchTabs') {
             chrome.tabs.query({}, (tabs) => {
                 const relevantTabs = tabs.filter(tab => !checkIrrelevantTabs(tab));
-                console.log(relevantTabs);
                 sendResponse({tabs: relevantTabs});
             });
         } else if (message.type === 'fetchWorkspaces') {
-            sendResponse({workspaces: spaces});
+            console.log("sending current workspace: ", currentSpace, " and all workspaces: ", spaces);
+            sendResponse({
+                workspaces: spaces, currentWorkspace: {
+                    ...currentSpace,
+                    tabs: currentSpace.tabs.filter(tab => !checkIrrelevantTabs(tab))
+                }
+            });
         } else if (message.type === 'createNewWorkspace' && message.payload) {
             createWorkspace(message.payload).then(() => {
                 sendResponse({status: 'success'});
@@ -152,79 +151,84 @@ async function deleteWorkspace(workspaceId: number) {
 
 async function createWorkspace(title: string) {
     try {
-        const newId = Math.floor(Math.random() * 1000000);
-        const newWorkspace: Workspace = {
-            id: newId,
+        const id = Math.floor(Math.random() * 1000);
+        const tabs: chrome.tabs.Tab[] = [];
+        if (title === "Default") {
+            tabs.push(defaultTab);
+        }
+        const workspace: Workspace = {
+            id: id,
             title,
-            tabs: [await chrome.tabs.create({url: 'chrome://newtab'})],
+            tabs: tabs,
             groups: [],
-            isCurrent: true
-        };
-        const lastActiveWorkspace = {
-            ...currentSpace,
             isCurrent: false
         };
-        spaces = spaces.map((workspace: Workspace) => {
-            if (workspace.id === lastActiveWorkspace.id) {
-                return lastActiveWorkspace;
-            } else {
-                return workspace;
-            }
-        });
-        spaces.push(newWorkspace);
-        currentSpace = newWorkspace;
-        lastActiveWorkspace.tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-        // await chrome.tabs.create({url: 'chrome://newtab'});
-        await chrome.storage.local.set({lastActiveWorkspaceId: newId});
-        await chrome.storage.local.set({workspaces: spaces});
+        spaces.push(workspace);
+        await switchWorkspace(workspace);
+        console.log('Workspace created:', workspace, 'All workspaces:', spaces, 'Current workspace:', currentSpace);
+
     } catch (e) {
         console.error('Error creating workspace:', e);
     }
 }
 
-async function switchWorkspace(workspaceId: number) {
+async function switchWorkspace(workspace: Workspace) {
     try {
-        const currentWorkspace = spaces.find((workspace: Workspace) => workspace.id === workspaceId);
-        let lastActiveWorkspace = spaces.find((workspace: Workspace) => workspace.isCurrent);
+        // Save and close current workspace tabs
+        const lastActiveWorkspace = currentSpace;
+        lastActiveWorkspace.isCurrent = false;
+        lastActiveWorkspace.tabs = await chrome.tabs.query({});
 
-        if (currentWorkspace && lastActiveWorkspace) {
-            currentSpace = {...currentWorkspace, isCurrent: true};
-            lastActiveWorkspace = {
-                ...lastActiveWorkspace,
-                tabs: await chrome.tabs.query({}),
-                groups: await chrome.tabGroups.query({}),
-                isCurrent: false
-            };
+        // Close tabs only from the last active workspace
+        const tabIdsToRemove = lastActiveWorkspace.tabs.map((tab) => tab.id).filter((id): id is number => id !== undefined);
 
-            spaces = spaces.map((workspace: Workspace) => {
-                if (workspace) {
-                    if (workspace.id === currentWorkspace.id) {
-                        return currentSpace;
-                    } else if (workspace.id === lastActiveWorkspace!.id) {
-                        return lastActiveWorkspace;
-                    } else {
-                        return workspace;
-                    }
-                }
-            }).filter((workspace): workspace is Workspace => workspace !== undefined);
+        // Update and load new workspace
+        currentSpace = workspace;
+        currentSpace.isCurrent = true;
+        await loadWorkspaceTabs(currentSpace);
 
-            // Save the current workspace ID to storage
-            await chrome.storage.local.set({lastActiveWorkspaceId: workspaceId});
-            await chrome.storage.local.set({workspaces: spaces});
-            console.log('Switched to workspace:', currentWorkspace);
+        const newSpaces = spaces.map((space) => {
+            if (space.id === workspace.id) {
+                return currentSpace;
+            } else if (space.id === lastActiveWorkspace.id) {
+                return lastActiveWorkspace;
+            } else {
+                return space;
+            }
+        });
+        spaces = newSpaces;
 
-            // Load the tabs and groups for the current workspace
-            lastActiveWorkspace.tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-            await loadWorkspaceTabs(currentWorkspace);
-        }
+        // Persist the workspace state
+        await chrome.storage.local.set({
+            workspaces: newSpaces,
+            lastActiveWorkspaceId: currentSpace.id
+        });
+        await chrome.tabs.remove(tabIdsToRemove);
+
+        console.log('Switched to workspace:', currentSpace);
     } catch (error) {
         console.error('Error switching workspace:', error);
     }
 }
 
 async function loadWorkspaceTabs(workspace: Workspace) {
-    for (const tab of workspace.tabs) {
-        await chrome.tabs.create({url: tab.url});
+    try {
+        currentSpace.tabs= [];
+        if (workspace.tabs.length === 0) {
+            await chrome.tabs.create({"url": "chrome://newtab", active: true});
+        }
+        // Create tabs for the workspace
+        for (const tab of workspace.tabs) {
+            await chrome.tabs.create({
+                url: tab.url,
+                active: false
+            });
+        }
+        currentSpace.tabs = await chrome.tabs.query({});
+        currentSpace.groups = await chrome.tabGroups.query({});
+        console.log('Loaded tabs for workspace:', workspace.title);
+    } catch (error) {
+        console.error('Error loading workspace tabs:', error);
     }
 }
 
@@ -281,6 +285,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
             await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});  // Retry collapsing after increased delay
         }
     }
+    currentSpace.tabs = await chrome.tabs.query({});
     startInactivityTimer(activeInfo.tabId, config.hibernationTime);
 });
 
@@ -334,6 +339,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 // Monitor when tabs are removed and check if their group has only one tab left
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+    currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
+    console.log("removed tab: ", tabId, "from: ", currentSpace.tabs);
     const group = tabGroupMap[tabId];
     if (group) {
         const tabs = await chrome.tabs.query({groupId: group});
@@ -342,7 +349,6 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
             delete domainGroupMap[new URL(tabs[0].url!).hostname];
         }
     }
-    currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
     delete tabGroupMap[tabId];
     stopInactivityTimer(tabId);
 });
