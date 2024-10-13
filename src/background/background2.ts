@@ -4,7 +4,7 @@ import {
     Config,
     debounce,
     defaultTab,
-    domainGroupMap,
+    domainGroupMap, getDomainColor,
     Message,
     sleep,
     startInactivityTimer,
@@ -15,11 +15,13 @@ import {
     Workspaces
 } from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
+import ColorEnum = chrome.tabGroups.ColorEnum;
 
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTime: 30000
+    hibernationTimeout: 600000,
+    lastAccessedThreshold: 600000
 };
 let currentExpandedGroupId: number | null = null;
 let tabCreationBuffer: chrome.tabs.Tab[] = [];
@@ -258,15 +260,6 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     startInactivityTimer(tab.id!, config.hibernationTime);
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url) {
-        debouncedTabUpdate(tabId, tab);
-        currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
-        currentSpace.tabs.push(tab);
-        startInactivityTimer(tabId, config.hibernationTime);
-    }
-});
-
 // Event: Collapse the current group when another group or tab outside it is clicked
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const activeTab = await chrome.tabs.get(activeInfo.tabId);
@@ -314,24 +307,14 @@ async function processTabBatch(tabs: chrome.tabs.Tab[]) {
     }
 }
 
-// Monitor when a group is deleted and reset currentExpandedGroupId if it was the expanded group
-chrome.tabGroups.onRemoved.addListener(async (group) => {
-    if (group.id === currentExpandedGroupId) {
-        console.log(`Currently expanded group ${group.id} was deleted, resetting currentExpandedGroupId.`);
-        currentExpandedGroupId = null;
-    }
-    currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== group.id);
-
-    for (const domain in domainGroupMap) {
-        if (domainGroupMap[domain] === group.id) {
-            delete domainGroupMap[domain];
-        }
-    }
-    // Delete all keys in tabGroupMap whose values are the group.id
-    for (const tabId in tabGroupMap) {
-        if (tabGroupMap[tabId] === group.id) {
-            delete tabGroupMap[tabId];
-        }
+chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        debouncedTabUpdate(tabId, tab);
+        currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
+        currentSpace.tabs.push(tab);
+        currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
+        currentSpace.groups = await chrome.tabGroups.query({})
+        startInactivityTimer(tabId, config.hibernationTime);
     }
 });
 
@@ -359,6 +342,27 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
     }
     delete tabGroupMap[tabId];
     stopInactivityTimer(tabId);
+});
+
+// Monitor when a group is deleted and reset currentExpandedGroupId if it was the expanded group
+chrome.tabGroups.onRemoved.addListener(async (group) => {
+    if (group.id === currentExpandedGroupId) {
+        console.log(`Currently expanded group ${group.id} was deleted, resetting currentExpandedGroupId.`);
+        currentExpandedGroupId = null;
+    }
+    currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== group.id);
+
+    for (const domain in domainGroupMap) {
+        if (domainGroupMap[domain] === group.id) {
+            delete domainGroupMap[domain];
+        }
+    }
+    // Delete all keys in tabGroupMap whose values are the group.id
+    for (const tabId in tabGroupMap) {
+        if (tabGroupMap[tabId] === group.id) {
+            delete tabGroupMap[tabId];
+        }
+    }
 });
 
 
@@ -399,10 +403,10 @@ async function groupTabs(tab: chrome.tabs.Tab) {
                 delete domainGroupMap[domain];
                 return;
             }
-            chrome.tabs.group({tabIds: [tab.id!], groupId}, (group) => {
+            chrome.tabs.group({tabIds: [tab.id!], groupId}, async (group) => {
                 currentExpandedGroupId = group;
                 tabGroupMap[tab.id!] = group;
-                chrome.tabGroups.update(group, {title: domain, collapsed: false}, (group) => {
+                chrome.tabGroups.update(group, {title: domain, collapsed: false, color: (await getDomainColor(domain) as ColorEnum)}, (group) => {
                     currentSpace.groups.push(group);
                 });
             });
@@ -411,11 +415,11 @@ async function groupTabs(tab: chrome.tabs.Tab) {
                 chrome.tabs.query({url: `*://*.${domain}/*`}, (existingTabs) => {
                     if (existingTabs.length > 1) {
                         const tabIds = existingTabs.map(t => t.id).filter(id => id !== undefined) as number[];
-                        chrome.tabs.group({tabIds}, (group) => {
+                        chrome.tabs.group({tabIds}, async (group) => {
                             domainGroupMap[domain] = group;
                             currentExpandedGroupId = group;
                             tabGroupMap[tab.id!] = group;
-                            chrome.tabGroups.update(group, {title: domain, collapsed: false}, (group) => {
+                            chrome.tabGroups.update(group, {title: domain, collapsed: false, color: (await getDomainColor(domain) as ColorEnum)}, (group) => {
                                 currentSpace.groups.push(group);
                             });
                         });
@@ -427,4 +431,14 @@ async function groupTabs(tab: chrome.tabs.Tab) {
         }
     }
 }
+
+// async function cleanTabs(tab: chrome.tabs.Tab) {
+//     try {
+//         if(tab.lastAccessed! < Date.now() - config.hibernationTime) {
+//             await chrome.tabs.remove(tab.id!);
+//         }
+//     } catch (error) {
+//         console.error('Error cleaning tabs:', error);
+//     }
+// }
 

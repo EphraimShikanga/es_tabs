@@ -11,6 +11,13 @@ export interface Workspace {
     isCurrent: boolean;
 }
 
+export interface Tab {
+    id: number;
+    tab: chrome.tabs.Tab;
+}
+export type Tabs = Record<number, Tab>;
+export type Workspaces = Record<number, Workspace>;
+
 export const defaultTab: chrome.tabs.Tab = {
     selected: true,
     id: -1,
@@ -29,10 +36,38 @@ export const defaultTab: chrome.tabs.Tab = {
     incognito: false
 };
 
+const availableColors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
+const usedColors = new Set<string>();
+
+export async function getDomainColor(domain: string): Promise<string> {
+    const colors = await chrome.storage.local.get('domainColors');
+    const domainColors = colors.domainColors || {};
+
+    if (domainColors[domain]) {
+        return domainColors[domain];
+    }
+
+    const unusedColors = availableColors.filter(color => !usedColors.has(color));
+
+    if (unusedColors.length === 0) {
+        usedColors.clear();
+        unusedColors.push(...availableColors);
+    }
+
+    const randomColor = unusedColors[Math.floor(Math.random() * unusedColors.length)];
+    usedColors.add(randomColor);
+
+    domainColors[domain] = randomColor;
+    await chrome.storage.local.set({ domainColors });
+
+    return randomColor;
+}
+
 export interface Config {
     [key: string]: any;
-
     removeFromGroupOnDomainChange?: boolean;
+    hibernationTimeout?: number;
+    lastAccessedThreshold?: number;
 }
 
 export interface Message<T = any> {

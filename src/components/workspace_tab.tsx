@@ -47,11 +47,7 @@ function TrashIcon() {
 }
 
 const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
-    const [currentWorkspaceTabs, setCurrentWorkspaceTabs] = useState(0);
-    // const {workspaces, setWorkspaces} = useWorkspace();
-    chrome.tabs.query({windowType: "normal"}, (tabs) => {
-        setCurrentWorkspaceTabs(tabs.length);
-    });
+    const {currentWorkspace} = useWorkspace();
 
 
     return (
@@ -59,54 +55,13 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
         // @ts-expect-error
         <ListItem className={`bg-white/20 p-1 ${workspace.isCurrent ? "bg-white/70" : ""}`}
         >
-            <div className={"flex flex-row flex-grow"} onClick={() => {
-                chrome.runtime.sendMessage({type: 'switchWorkspace', payload: workspace.id}, (response) => {
+            <div className={"flex flex-row flex-grow"} onClick={() =>
+                chrome.runtime.sendMessage({type: 'switchWorkspace', payload: workspace}, (response) => {
                     if (response!.status === 'success') {
                         console.log("clicked", response);
                         // setWorkspaces(response.workspaces);
                     }
-                });
-                // chrome.tabGroups.query({}, (groups) => {
-                //     chrome.tabs.query({windowType: "normal"}, async (tabs) => {
-                //         const newTabs: chrome.tabs.Tab[] = [];
-                //         // const newGroups: chrome.tabGroups.TabGroup[] = [];
-                //         if (workspace.tabs.length > 0) {
-                //             workspace.tabs.forEach((tab) => {
-                //                 chrome.tabs.create({url: tab.url}).then((t) => {
-                //                     newTabs.push({...t, groupId: tab.groupId});
-                //                     // newGroups.push(...chrome.tabGroups.query({}));
-                //                     console.log('Tab created successfully');
-                //                 }).catch((error) => {
-                //                     console.error('Error creating tab:', error);
-                //                 });
-                //             });
-                //             tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                //             // await new Promise((resolve) => setTimeout(resolve, 5000));
-                //             // workspace.tabs.forEach((tab) => chrome.tabs.discard(tab.id!));
-                //         } else {
-                //             await chrome.tabs.create({url: "chrome://newtab", active: true});
-                //             tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                //         }
-                //         const updatedWorkspaces = workspaces.map(w => {
-                //                 if (workspace.id === w.id) {
-                //                     return {...w, isCurrent: true};
-                //                 } else if (w.isCurrent) {
-                //                     return {...w, tabs: tabs, groups: groups, isCurrent: false};
-                //                 } else {
-                //                     return w;
-                //                 }
-                //             }
-                //             // workspace.id === w.id ? {...w, tabs: newTabs, isCurrent: true} : {...w, tabs: tabs, groups: groups, isCurrent: false}
-                //         );
-                //         // TODO: Will handle this and tabs with groups later
-                //         chrome.storage.local.set({'workspaces': updatedWorkspaces}, () => {
-                //             setWorkspaces(updatedWorkspaces);
-                //             newTabs.forEach((tab) => chrome.tabs.discard(tab.id!));
-                //             console.log("Workspaces saved successfully");
-                //         });
-                //     });
-                // });
-            }}>
+                })}>
                 {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                 {/*@ts-expect-error*/}
                 <ListItemPrefix>
@@ -124,7 +79,7 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                                 className="font-normal">
                         {
                             workspace.isCurrent ?
-                                currentWorkspaceTabs
+                                currentWorkspace.tabs.length
                                 :
                                 workspace.tabs.length
                         } tabs
@@ -144,31 +99,8 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                                 chrome.runtime.sendMessage({type: 'deleteWorkspace', payload: workspace.id}, (response) => {
                                     if (response!.status === 'success') {
                                         console.log("clicked", response);
-                                        // setWorkspaces(response.workspaces);
                                     }
                                 });
-                                // const updatedWorkspaces = workspaces.filter(w => w.id !== workspace.id);
-                                // chrome.storage.local.set({'workspaces': updatedWorkspaces}, async () => {
-                                //     setWorkspaces(updatedWorkspaces);
-                                //     console.log("Workspace deleted successfully");
-                                //
-                                //     if (workspace.isCurrent) {
-                                //         const defaultWorkspace = updatedWorkspaces.find(w => w.id === 1);
-                                //         if (defaultWorkspace) {
-                                //             chrome.tabs.query({windowType: "normal"}, (tabs) => {
-                                //                 tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-                                //                 defaultWorkspace.tabs.forEach((tab) => {
-                                //                     chrome.tabs.create({url: tab.url}).then(() => {
-                                //                         console.log('Tab created successfully');
-                                //                     }).catch((error) => {
-                                //                         console.error('Error creating tab:', error);
-                                //                     });
-                                //                 });
-                                //
-                                //             });
-                                //         }
-                                //     }
-                                // });
                             }
                         }>
                             <TrashIcon/>
@@ -229,8 +161,7 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newWorkspaceName, setNewWorkspaceName] = useState("");
     const {workspaces} = useWorkspace();
-    const isDuplicate = workspaces.some(workspace => workspace.title === newWorkspaceName.trim());
-
+    const isDuplicate = Object.values(workspaces).some(workspace => workspace.title === newWorkspaceName.trim());
 
     const handleAddWorkspace = () => {
         setIsAdding(true);
@@ -246,29 +177,6 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
                     setIsAdding(false);
                 }
             });
-            // chrome.tabGroups.query({}, (groups) => {
-            //     chrome.tabs.query({windowType: "normal"}, (tabs) => {
-            //         const updatedWorkspaces = workspaces.map(workspace =>
-            //             workspace.isCurrent ? {...workspace, tabs: tabs, groups: groups, isCurrent: false} : workspace
-            //         );
-            //         const newId = Math.floor(Math.random() * 1000000);
-            //         const toSave = [...updatedWorkspaces, {
-            //             id: newId,
-            //             title: newWorkspaceName,
-            //             tabs: [],
-            //             groups: [],
-            //             isCurrent: true
-            //         }];
-            //         setWorkspaces(toSave);
-            //         setNewWorkspaceName("");
-            //         setIsAdding(false);
-            //
-            //         chrome.storage.local.set({'workspaces': toSave}, async () => {
-            //             tabs.forEach((tab) => chrome.tabs.remove(tab.id!));
-            //             await chrome.tabs.create({url: "chrome://newtab", active: true});
-            //         });
-            //     });
-            // });
         }
     };
 
@@ -315,9 +223,10 @@ const WorkspaceTab: React.FC<WorkspaceTabProps> = ({value}) => {
                                       setNewWorkspaceName={setNewWorkspaceName}/>
                     )}
                     {
-                        workspaces.map((workspace, index) => (
+                        Object.values(workspaces).map((workspace, index) => (
                             <Workspace key={index} workspace={workspace}/>
                         ))
+
                     }
 
                 </List>

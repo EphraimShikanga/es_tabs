@@ -28,8 +28,8 @@ type GroupTabsProps = {
 const GroupTabs: React.FC<GroupTabsProps> = ({tabs}) => {
     const handleTabClick = async (tab: chrome.tabs.Tab) => {
         try {
-            const e = await chrome.tabs.query({url: tab.url});
-            await chrome.tabs.update(e[0].id!, {active: true});
+            // const e = await chrome.tabs.query({url: tab.url});
+            await chrome.tabs.update(tab.id!, {active: true});
         } catch (error) {
             console.error("Error updating tab: ", error);
         }
@@ -43,7 +43,8 @@ const GroupTabs: React.FC<GroupTabsProps> = ({tabs}) => {
                 tabs.map((tab, index) =>
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-expect-error
-                    <ListItem onClick={() => handleTabClick(tab)} key={index} className={"h-10 hover:bg-white/20 flex flex-row justify-between"}>
+                    <ListItem onClick={() => handleTabClick(tab)} key={index}
+                              className={"h-10 hover:bg-white/20 flex flex-row justify-between"}>
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <ListItemPrefix className={"bg-white/50 rounded-lg items-center p-1"}>
@@ -124,12 +125,12 @@ const Group: React.FC<GroupProps> = ({group, tabs}) => {
 
 
 const GroupsTab: React.FC<GroupsTabProps> = ({value}) => {
-    const {workspaces} = useWorkspace();
+    const {currentWorkspace} = useWorkspace();
     return (
         <TabPanel value={value} className={"h-full overflow-auto scrollbar-webkit"}>
             {
-                workspaces.find(workspace => workspace.isCurrent)!.groups.map((group, index) => {
-                    const tabs = workspaces.find(workspace => workspace.isCurrent)!.tabs.filter(tab => tab.groupId === group.id);
+                currentWorkspace.groups.map((group, index) => {
+                    const tabs = currentWorkspace.tabs.filter(tab => tab.groupId === group.id);
                     return <Group key={index} group={group} tabs={tabs}/>;
                 })
             }

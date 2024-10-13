@@ -8,11 +8,13 @@ type Workspace = {
     isCurrent: boolean;
 };
 
+type Workspaces = Record<number, Workspace>;
+
 interface WorkspaceContextType {
-    selected: number;
-    setSelectedItem: (value: number) => void;
-    workspaces: Workspace[];
-    setWorkspaces: Dispatch<SetStateAction<Workspace[]>>;
+    currentWorkspace: Workspace;
+    setCurrentWorkspace: (value: Workspace) => void;
+    workspaces: Workspaces;
+    setWorkspaces: Dispatch<SetStateAction<Workspaces>>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -28,14 +30,16 @@ export const useWorkspace = () => {
 
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
-    const [selected, setSelectedItem] = useState<number>(0);
-    const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+    const [currentWorkspace, setCurrentWorkspace] = useState<Workspace>({ id: 0, title: '', tabs: [], groups: [], isCurrent: false });
+    const [workspaces, setWorkspaces] = useState<Workspaces>({});
 
     useEffect(() => {
         try {
             chrome.runtime.sendMessage({ type: 'fetchWorkspaces' }, (response) => {
-                if (response?.workspaces) {
+                if (response!.workspaces && response!.currentWorkspace) {
                     setWorkspaces(response.workspaces);
+                    setCurrentWorkspace(response.currentWorkspace);
+                    console.log(response.currentWorkspace);
                 }
             });
         } catch (error) {
@@ -45,7 +49,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
 
     return (
-        <WorkspaceContext.Provider value={{ selected, setSelectedItem, workspaces, setWorkspaces }}>
+        <WorkspaceContext.Provider value={{ currentWorkspace, setCurrentWorkspace, workspaces, setWorkspaces }}>
             {children}
         </WorkspaceContext.Provider>
     );
