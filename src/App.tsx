@@ -5,9 +5,9 @@ import {useDebounce} from 'use-debounce';
 import ChromeTab from "@/components/chrome_tab.tsx";
 import {Tabs, TabsBody, TabsHeader,} from "@material-tailwind/react";
 import ExtensionTab from "@/components/extension_tab.tsx";
-// import GroupsTab from "@/components/groups_tab.tsx";
-// import WorkspaceTab from "@/components/workspace_tab.tsx";
-// import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
+import GroupsTab from "@/components/groups_tab.tsx";
+import WorkspaceTab from "@/components/workspace_tab.tsx";
+import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
 
 
 function App() {
@@ -125,13 +125,10 @@ function App() {
                             // defaultValue={"Groups"}
                             className={"h-full w-full rounded-lg p-2 "}
                         >
-                            <div>
-                                es
-                            </div>
-                            {/*<WorkspaceProvider>*/}
-                                {/*<WorkspaceTab value={"Workspaces"}/>*/}
-                                {/*<GroupsTab value={"Groups"}/>*/}
-                            {/*</WorkspaceProvider>*/}
+                            <WorkspaceProvider>
+                                <WorkspaceTab value={"Workspaces"}/>
+                                <GroupsTab value={"Groups"}/>
+                            </WorkspaceProvider>
                         </TabsBody>
                     </Tabs>
                 </div>

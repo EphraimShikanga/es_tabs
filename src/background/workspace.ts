@@ -27,7 +27,7 @@ export async function loadWorkspaces(workspaces: Workspaces, lastActiveWorkspace
     return {spaces, currentSpace};
 }
 
-export function handleMessaging(config: Config, currentSpace: Workspace, message: Message, _sender: MessageSender, sendResponse: (response?: any) => void) {
+export function handleMessaging(config: Config, currentSpace: Workspace, spaces: Workspaces, message: Message, _sender: MessageSender, sendResponse: (response?: any) => void) {
     switch (message.type) {
         case 'updateConfig':
             updateConfig(config, message.payload);
@@ -38,9 +38,12 @@ export function handleMessaging(config: Config, currentSpace: Workspace, message
             sendResponse({tabs: messageWorkspace.tabs});
             break;
         }
-        // case 'fetchWorkspaces':
-        //     sendResponse({ workspaces: spaces, currentWorkspace: currentSpace });
-        //     break;
+        case 'fetchWorkspaces': {
+            const messageCurrentWorkspace = convertWorkspaceToMessage(currentSpace);
+            const messageWorkspaces = Object.values(spaces).map((space) => convertWorkspaceToMessage(space));
+            sendResponse({workspaces: messageWorkspaces, currentWorkspace: messageCurrentWorkspace});
+            break;
+        }
         // case 'createNewWorkspace':
         //     createNewWorkspace(message.payload);
         //     sendResponse({ status: 'success' });

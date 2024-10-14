@@ -56,7 +56,7 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Handle messages from the popup UI
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    handleMessaging(config,  currentSpace, message, _sender, sendResponse);
+    handleMessaging(config,  currentSpace, spaces, message, _sender, sendResponse);
     return true;
 });
 
