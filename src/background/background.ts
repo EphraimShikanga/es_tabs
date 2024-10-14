@@ -48,7 +48,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // Handle tab creation
 let tabCreationBuffer: chrome.tabs.Tab[] = [];
 let isProcessingBuffer = false;
-let currentExpandedGroupId: number | null = null;
 chrome.tabs.onCreated.addListener(async (tab) => {
     tabCreationBuffer.push(tab);
     if (!isProcessingBuffer) {
@@ -56,7 +55,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
         setTimeout(async () => {
             const bufferCopy = [...tabCreationBuffer];
             tabCreationBuffer = [];
-            isProcessingBuffer = await processTabBatch(bufferCopy, currentSpace, currentExpandedGroupId);
+            isProcessingBuffer = await processTabBatch(bufferCopy, currentSpace);
         }, DEBOUNCE_DELAY);
     }
     await collapseAllGroups();
@@ -67,7 +66,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 
 chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
-        debouncedTabUpdate(tabId, tab, config,currentSpace, currentExpandedGroupId);
+        debouncedTabUpdate(tabId, tab, config,currentSpace);
         Object.values(currentSpace.tabs).forEach((storedtab) => {
             console.log("hello");
             if (storedtab.tab.url === tab.url) {
@@ -98,13 +97,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    await updateGroups(activeInfo.tabId, currentExpandedGroupId, currentSpace, config);
+    await updateGroups(activeInfo.tabId, currentSpace, config);
 });
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
     await handleTabRemoval(tabId, currentSpace);
 });
 
+
 chrome.tabGroups.onRemoved.addListener(async (group) => {
-   await handleGroupRemoval(group.id, currentSpace, currentExpandedGroupId);
+   await handleGroupRemoval(group.id, currentSpace);
 });

@@ -56,6 +56,7 @@ export const defaultTab: chrome.tabs.Tab = {
 export const domainGroupMap: { [domain: string]: number } = {};
 export const tabGroupMap: { [tabId: number]: number } = {};
 export const DEBOUNCE_DELAY = 500;
+export const currentExpandedGroupId: {[group: string]: number | null} = { "group": null };
 
 
 

@@ -1,6 +1,13 @@
 // utils for the background script
 
-import {Config, DEBOUNCE_DELAY, domainGroupMap, tabGroupMap, Workspace} from "@/background/types.ts";
+import {
+    Config,
+    currentExpandedGroupId,
+    DEBOUNCE_DELAY,
+    domainGroupMap,
+    tabGroupMap,
+    Workspace
+} from "@/background/types.ts";
 import ColorEnum = chrome.tabGroups.ColorEnum;
 
 const availableColors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
@@ -116,11 +123,11 @@ export const updateConfig = debounce(async (oldConfig: Config, newConfig: Config
 }, DEBOUNCE_DELAY);
 
 // Process tabs in bulk when multiple tabs are created at once
-export async function processTabBatch(tabs: chrome.tabs.Tab[], currentSpace: Workspace, currentExpandedGroupId: number | null) {
+export async function processTabBatch(tabs: chrome.tabs.Tab[], currentSpace: Workspace) {
     try {
         await Promise.all(tabs.map(async (tab) => {
             if (tab.url) {
-                await groupTabs(tab, currentSpace, currentExpandedGroupId);
+                await groupTabs(tab, currentSpace);
             }
         }));
         return false
@@ -130,70 +137,59 @@ export async function processTabBatch(tabs: chrome.tabs.Tab[], currentSpace: Wor
     return false;
 }
 
-export async function groupTabs(tab: chrome.tabs.Tab, currentSpace: Workspace, currentExpandedGroupId: number | null = null) {
-    if (!tab.url) {
-        console.warn('Tab does not have a valid URL.');
-        return;
-    }
-
-    const url = new URL(tab.url);
-    const domain = url.hostname;
-
+export async function groupTabs(tab: chrome.tabs.Tab, currentSpace: Workspace) {
+    if (!tab.url) return;
     try {
-        // Check if the domain is already mapped to a group
-        let groupId = domainGroupMap[domain];
-        let group: chrome.tabGroups.TabGroup | null = null;
+        const url = new URL(tab.url);
+        const domain = url.hostname;
 
-        if (groupId) {
-            // Attempt to retrieve the existing group
-            group = await chrome.tabGroups.get(groupId).catch(() => null);
-
+        if (domainGroupMap[domain]) {
+            const groupId = domainGroupMap[domain];
+            const group = await chrome.tabGroups.get(groupId).catch(() => null);
             if (!group) {
-                console.log(`Group with ID ${groupId} no longer exists. Cleaning up...`);
+                console.log(`Group with ID ${groupId} no longer exists.`);
+                currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== groupId);
                 delete domainGroupMap[domain];
+                return;
             }
-        }
-
-        // If the group doesn't exist, create or find relevant group for the domain
-        if (!groupId) {
-            const existingTabs = await chrome.tabs.query({url: `*://*.${domain}/*`});
-
-            // Only group tabs if there are multiple tabs for the same domain
-            if (existingTabs.length > 1) {
-                const tabIds = existingTabs.map(t => t.id!).filter(id => id !== undefined);
-
-                // Group the tabs and save the group ID
-                groupId = await chrome.tabs.group({tabIds});
-                domainGroupMap[domain] = groupId;
-            }
-        }
-
-        // Group the current tab into the relevant group
-        if (groupId) {
-            const newGroupId = await chrome.tabs.group({tabIds: [tab.id!], groupId});
-
-            // Update the group properties (title, color, etc.)
-            const color = await getDomainColor(domain) as ColorEnum;
-            group = await chrome.tabGroups.update(newGroupId, {
-                title: domain,
-                collapsed: false,
-                color
+            chrome.tabs.group({tabIds: tab.id!, groupId}, async (group) => {
+                currentExpandedGroupId["group"] = group;
+                tabGroupMap[tab.id!] = group;
+                chrome.tabGroups.update(group, {
+                    title: domain,
+                    collapsed: false,
+                    color: (await getDomainColor(domain) as ColorEnum)
+                }, (group) => {
+                    currentSpace.groups.push(group);
+                });
             });
+        } else {
 
-            // Update the tab-group maps
-            tabGroupMap[tab.id!] = newGroupId;
-
-            // Update the current workspace with the new group (ensuring immutability)
-            currentExpandedGroupId = group.id;
-            currentSpace.groups = [...currentSpace.groups.filter(g => g.id !== currentExpandedGroupId), group];
-
+            chrome.tabs.query({url: `*://*.${domain}/*`}, (existingTabs) => {
+                if (existingTabs.length > 1) {
+                    const tabIds = existingTabs.map(t => t.id).filter(id => id !== undefined) as number[];
+                    chrome.tabs.group({tabIds}, async (group) => {
+                        domainGroupMap[domain] = group;
+                        currentExpandedGroupId["group"] = group;
+                        tabGroupMap[tab.id!] = group;
+                        chrome.tabGroups.update(group, {
+                            title: domain,
+                            collapsed: false,
+                            color: (await getDomainColor(domain) as ColorEnum)
+                        }, (group) => {
+                            currentSpace.groups.push(group);
+                        });
+                    });
+                }
+            });
         }
     } catch (error) {
-        console.error('Error handling tab grouping:', error);
+        console.error('Error grouping tabs:', error);
     }
+
 }
 
-export const debouncedTabUpdate = debounce(async (tabId: number, tab: chrome.tabs.Tab, config: Config, currentSpace: Workspace, currentExpandedGroupId: number | null) => {
+export const debouncedTabUpdate = debounce(async (tabId: number, tab: chrome.tabs.Tab, config: Config, currentSpace: Workspace) => {
     try {
         if (config.removeFromGroupOnDomainChange && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
             const group = await chrome.tabGroups.get(tab.groupId).catch(() => null);
@@ -206,41 +202,41 @@ export const debouncedTabUpdate = debounce(async (tabId: number, tab: chrome.tab
                 await Promise.all([
                     chrome.tabs.ungroup(tabId),
                     chrome.tabGroups.update(group.id, {collapsed: true}),
-                    groupTabs(tab, currentSpace, currentExpandedGroupId)
+                    groupTabs(tab, currentSpace)
                 ]);
             }
         } else if (tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) {
-            await groupTabs(tab, currentSpace, currentExpandedGroupId);
+            await groupTabs(tab, currentSpace);
         }
     } catch (error) {
         console.error(`Error processing tab ${tabId} (URL: ${tab.url}):`, error);
     }
 }, DEBOUNCE_DELAY);
 
-export async function updateGroups(tabId: number, currentExpandedGroupId: number | null, currentSpace: Workspace, config: Config) {
+export async function updateGroups(tabId: number, currentSpace: Workspace, config: Config) {
     const activeTab = await chrome.tabs.get(tabId);
     let delay = DEBOUNCE_DELAY;
     try {
-        if (activeTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && activeTab.groupId !== currentExpandedGroupId) {
-            if (currentExpandedGroupId !== null) {
+        if (activeTab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && activeTab.groupId !== currentExpandedGroupId["group"]) {
+            if (currentExpandedGroupId["group"] !== null) {
                 await sleep(delay);
-                await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});
+                await chrome.tabGroups.update(currentExpandedGroupId["group"], {collapsed: true});
             }
 
             await sleep(delay);
             await chrome.tabGroups.update(activeTab.groupId, {collapsed: false});
-            currentExpandedGroupId = activeTab.groupId;
-        } else if (activeTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE && currentExpandedGroupId !== null) {
+            currentExpandedGroupId["group"] = activeTab.groupId;
+        } else if (activeTab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE && currentExpandedGroupId["group"] !== null) {
             await sleep(delay);
-            await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});
-            currentExpandedGroupId = null;
+            await chrome.tabGroups.update(currentExpandedGroupId["group"], {collapsed: true});
+            currentExpandedGroupId["group"] = null;
         }
     } catch (error) {
         console.error(`Error updating tab groups, retrying with more delay`, error);
-        if (currentExpandedGroupId !== null) {
+        if (currentExpandedGroupId["group"] !== null) {
             delay += 200;
             await sleep(delay);
-            await chrome.tabGroups.update(currentExpandedGroupId, {collapsed: true});  // Retry collapsing after increased delay
+            await chrome.tabGroups.update(currentExpandedGroupId["group"], {collapsed: true});  // Retry collapsing after increased delay
         }
     }
     currentSpace.tabs[tabId] = {id: tabId, tab: activeTab};
@@ -263,19 +259,19 @@ export async function handleTabRemoval(tabId: number, currentSpace: Workspace) {
     stopInactivityTimer(tabId);
 }
 
-export async function handleGroupRemoval(groupId: number, currentSpace: Workspace, currentExpandedGroupId: number | null) {
+export async function handleGroupRemoval(groupId: number, currentSpace: Workspace) {
     const tabs = await chrome.tabs.query({groupId});
     tabs.forEach(tab => {
         delete currentSpace.tabs[tab.id!];
         if (tabGroupMap[tab.id!]) {
             delete tabGroupMap[tab.id!];
         }
+        delete domainGroupMap[new URL(tab.url!).hostname];
     });
-    delete domainGroupMap[new URL(tabs[0].url!).hostname];
 
-    if (groupId === currentExpandedGroupId) {
+    if (groupId === currentExpandedGroupId["group"]) {
         console.log(`Currently expanded group ${groupId} was deleted, resetting currentExpandedGroupId.`);
-        currentExpandedGroupId = null;
+        currentExpandedGroupId["group"] = null;
     }
     currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== groupId);
 }
