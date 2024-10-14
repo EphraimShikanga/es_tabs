@@ -143,7 +143,7 @@ chrome.tabGroups.onRemoved.addListener(async (group) => {
     await handleGroupRemoval(group.id, currentSpace);
 });
 
-setTimeout(async () => {
+setInterval(async () => {
     await checkTabsForInactivity(config.closeTabAfterDuration, closedTabsStorage, currentSpace);
     // await collapseAllGroups();
     // await updateGroups(-1, currentSpace, config);
