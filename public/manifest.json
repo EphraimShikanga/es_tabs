@@ -19,6 +19,6 @@
     "tabGroups"
   ],
   "background": {
-    "service_worker": "./src/background/background2.ts"
+    "service_worker": "./src/background/background.ts"
   }
 }
