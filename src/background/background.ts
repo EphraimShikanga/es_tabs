@@ -1,9 +1,10 @@
 import {Config, DEBOUNCE_DELAY, tabGroupMap, Workspace, Workspaces} from "@/background/types.ts";
 import {handleMessaging, loadWorkspaces} from "@/background/workspace.ts";
 import {
-    checkIrrelevantTabs,
     collapseAllGroups,
-    debouncedTabUpdate, handleGroupRemoval, handleTabRemoval,
+    debouncedTabUpdate,
+    handleGroupRemoval,
+    handleTabRemoval,
     processTabBatch,
     startInactivityTimer,
     updateGroups
@@ -25,7 +26,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 let spaces: Workspaces = {}
-let currentSpace: Workspace = { id: 0, title: '', tabs: {}, groups: [], isCurrent: false };
+let currentSpace: Workspace = {id: 0, title: '', tabs: {}, groups: [], isCurrent: false};
 
 
 // Load persisted configuration when the extension starts
@@ -35,7 +36,7 @@ chrome.runtime.onStartup.addListener(() => {
             config = data.config;
             console.log('Configuration loaded from storage:', config);
         }
-       ({ spaces, currentSpace } = await loadWorkspaces(data.workspaces, data.lastActiveWorkspaceId));
+        ({spaces, currentSpace} = await loadWorkspaces(data.workspaces, data.lastActiveWorkspaceId));
     });
 });
 
@@ -66,25 +67,34 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     console.log(spaces);
 });
 
-chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
-        debouncedTabUpdate(tabId, tab, config,currentSpace);
-        // if(config.navigateToAlreadyOpenTab){
-        //     Object.values(currentSpace.tabs).forEach((storedtab) => {
-        //         console.log("hello");
-        //         if (storedtab.tab.url === tab.url && tab.url !== undefined && !checkIrrelevantTabs(storedtab.tab)) {
-        //             console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
-        //             chrome.tabs.remove(storedtab.id);
-        //             chrome.tabs.update(tabId, {active: true});
-        //             delete currentSpace.tabs[storedtab.id];
-        //             // currentSpace.tabs[tabId] = {id:tabId, tab:tab};
-        //             return;
-        //         }
-        //     });
-        // }
-        console.log("After",currentSpace);
+        debouncedTabUpdate(tabId, tab, config, currentSpace);
+        if (config.navigateToAlreadyOpenTab) {
+            const openedSimilarTabs = await chrome.tabs.query({url: tab.url});
+            if (openedSimilarTabs.length > 1) {
+                openedSimilarTabs.forEach((openedTab) => {
+                    if (openedTab.id !== tabId) {
+                        chrome.tabs.remove(openedTab.id!);
+                    }
+                });
+            }
+            await chrome.tabs.update(tabId, {active: true});
+            // Object.values(currentSpace.tabs).forEach((storedtab) => {
+            //
+            //     if (storedtab.tab.url === tab.url && tab.url !== undefined && !checkIrrelevantTabs(storedtab.tab)) {
+            //         console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
+            //         // chrome.tabs.remove(storedtab.id);
+            //         chrome.tabs.update(storedtab.id, {active: true});
+            //         // delete currentSpace.tabs[storedtab.id];
+            //         // currentSpace.tabs[tabId] = {id:tabId, tab:tab};
+            //         return;
+            //     }
+            // });
+        }
+        console.log("After", currentSpace);
 
-        currentSpace.tabs[tabId] = {id:tabId, tab:tab};
+        currentSpace.tabs[tabId] = {id: tabId, tab: tab};
         // currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
         currentSpace.groups = await chrome.tabGroups.query({})
         startInactivityTimer(tabId, config.hibernationTimeout!);
@@ -129,5 +139,5 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 
 
 chrome.tabGroups.onRemoved.addListener(async (group) => {
-   await handleGroupRemoval(group.id, currentSpace);
+    await handleGroupRemoval(group.id, currentSpace);
 });
