@@ -1,6 +1,7 @@
 import {Config, DEBOUNCE_DELAY, tabGroupMap, Workspace, Workspaces} from "@/background/types.ts";
 import {handleMessaging, loadWorkspaces} from "@/background/workspace.ts";
 import {
+    checkIrrelevantTabs,
     collapseAllGroups,
     debouncedTabUpdate, handleGroupRemoval, handleTabRemoval,
     processTabBatch,
@@ -11,7 +12,7 @@ import {
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTimeout: 3000,
+    hibernationTimeout: 30000,
     lastAccessedThreshold: 600000,
     navigateToAlreadyOpenTab: true
 };
@@ -71,13 +72,11 @@ chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
         if(config.navigateToAlreadyOpenTab){
             Object.values(currentSpace.tabs).forEach((storedtab) => {
                 console.log("hello");
-                if (storedtab.tab.url === tab.url && tab.url !== undefined) {
+                if (storedtab.tab.url === tab.url && tab.url !== undefined && !checkIrrelevantTabs(storedtab.tab)) {
                     console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
-                    chrome.tabs.update(storedtab.id, {active: true}, async () => {
-                        console.log('Tab already exists, navigating to it');
-                        await chrome.tabs.remove(tabId);
-                        return;
-                    });
+                    chrome.tabs.remove(storedtab.id);
+                    chrome.tabs.update(tabId, {active: true});
+                    currentSpace.tabs[tabId] = {id:tabId, tab:tab};
                 }
             });
         }

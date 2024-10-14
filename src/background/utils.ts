@@ -72,6 +72,7 @@ export async function collapseAllGroups() {
 // Function to hibernate a tab
 async function hibernateTab(tabId: number) {
     const [activeTab] = await chrome.tabs.query({active: true});
+    console.log("hibernating tab", tabId);
     if (activeTab && activeTab.id === tabId) {
         return;
     }
@@ -85,6 +86,7 @@ async function hibernateTab(tabId: number) {
 
 // Start or reset the inactivity timer for a tab
 export function startInactivityTimer(tabId: number, inactivityLimit: number) {
+    console.log("hibernationTimeout", inactivityLimit);
     if (tabInactivityTimers.has(tabId)) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
