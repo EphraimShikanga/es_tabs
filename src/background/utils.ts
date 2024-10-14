@@ -5,7 +5,7 @@ import {
     Config,
     currentExpandedGroupId,
     DEBOUNCE_DELAY,
-    domainGroupMap,
+    domainGroupMap, Tab,
     tabGroupMap,
     Workspace
 } from "@/background/types.ts";
@@ -132,12 +132,12 @@ export function checkIrrelevantTabs(tab: chrome.tabs.Tab): boolean {
         'chrome-search://',
         'about:'
     ];
-    return irrelevantPrefixes.some(prefix => tab.url?.startsWith(prefix));
+    return irrelevantPrefixes.some(prefix => tab.url!.startsWith(prefix));
 }
 
 export function convertWorkspaceToMessage(workspace: Workspace): Omit<Workspace, 'tabs'> & { tabs: chrome.tabs.Tab[] } {
     // Extracting the chrome.tabs.Tab objects from the Record and putting them into an array
-    const tabsArray = Object.values(workspace.tabs).map(tabRecord => tabRecord.tab);
+    const tabsArray = Object.values(workspace.tabs).map(tabRecord => tabRecord.tab).filter(tab => tab !== undefined);
 
     // Return a new workspace object with the tabs array instead of the Record
     return {
@@ -145,6 +145,26 @@ export function convertWorkspaceToMessage(workspace: Workspace): Omit<Workspace,
         tabs: tabsArray
     };
 }
+
+export function convertMessageToWorkspace(messageWorkspace: Omit<Workspace, 'tabs'> & { tabs: chrome.tabs.Tab[] }): Workspace {
+    // Convert the tabs array back into a Record<number, Tab>
+    const tabsRecord: Record<number, Tab> = {};
+    messageWorkspace.tabs.forEach(tab => {
+        if (tab.id !== undefined) {
+            tabsRecord[tab.id] = {
+                id: tab.id,
+                tab: tab
+            };
+        }
+    });
+
+    // Return the original workspace object with the tabs as a Record
+    return {
+        ...messageWorkspace,
+        tabs: tabsRecord
+    };
+}
+
 
 
 export const updateConfig = debounce(async (oldConfig: Config, newConfig: Config) => {

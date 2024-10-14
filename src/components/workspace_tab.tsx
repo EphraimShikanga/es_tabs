@@ -48,20 +48,23 @@ function TrashIcon() {
 
 const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
     const {currentWorkspace} = useWorkspace();
-
-
+    console.log("Current workspace in Workspaces", currentWorkspace);
     return (
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error
         <ListItem className={`bg-white/20 p-1 ${workspace.isCurrent ? "bg-white/70" : ""}`}
         >
-            <div className={"flex flex-row flex-grow"} onClick={() =>
-                chrome.runtime.sendMessage({type: 'switchWorkspace', payload: workspace}, (response) => {
-                    if (response!.status === 'success') {
-                        console.log("clicked", response);
-                        // setWorkspaces(response.workspaces);
+            <div className={"flex flex-row flex-grow"} onClick={() => {
+                console.log("Frontend Mentor", "clicked", workspace.isCurrent);
+                chrome.runtime.sendMessage({type: 'switchWorkspace', payload: workspace.id}, (response) => {
+                    console.log("clicked", response);
+                    if (response && response.status === 'success') {
+                        console.log("Switched to workspace:", response.result);
+                    } else {
+                        console.error("Failed to switch workspace:", response ? response.message : "No response");
                     }
-                })}>
+                })
+            }}>
                 {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                 {/*@ts-expect-error*/}
                 <ListItemPrefix>

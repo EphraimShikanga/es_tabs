@@ -1,7 +1,7 @@
 // Background workspace functions
 
 import {Config, Message, Workspace, Workspaces} from "@/background/types.ts";
-import {convertWorkspaceToMessage, updateConfig} from "@/background/utils.ts";
+import {checkIrrelevantTabs, convertWorkspaceToMessage, updateConfig} from "@/background/utils.ts";
 import MessageSender = chrome.runtime.MessageSender;
 
 export async function loadWorkspaces(workspaces: Workspaces, lastActiveWorkspaceId: number) {
@@ -14,7 +14,28 @@ export async function loadWorkspaces(workspaces: Workspaces, lastActiveWorkspace
     const defaultWorkspace = {
         id: 1,
         title: 'Default',
-        tabs: {},
+        tabs: {
+            1: {
+                id: 1,
+                tab: {
+                    selected: true,
+                    id: 1,
+                    url: 'chrome://newtab/',
+                    title: 'New Tab',
+                    favIconUrl: 'tabss.webp',
+                    active: true,
+                    pinned: false,
+                    discarded: false,
+                    autoDiscardable: true,
+                    mutedInfo: {muted: false},
+                    groupId: chrome.tabGroups.TAB_GROUP_ID_NONE,
+                    windowId: 1,
+                    index: 1,
+                    highlighted: true,
+                    incognito: false
+                }
+            }
+        },
         groups: [],
         isCurrent: true
     };
@@ -49,10 +70,16 @@ export async function handleMessaging(config: Config, currentSpace: Workspace, s
             sendResponse({status: 'success'});
             return result;
         }
-        // case 'switchWorkspace':
-        //     switchWorkspace(message.payload);
-        //     sendResponse({ status: 'success' });
-        //     break;
+        case 'switchWorkspace': {
+            switchWorkspace(message.payload, spaces, currentSpace).then((result) => {
+                if (result && result.newCurrentSpace && result.newSpaces) {
+                    sendResponse({status: 'success', result});
+                    return result;
+                }
+            });
+            break;
+            // sendResponse({status: 'success', result: result});
+        }
         // case 'deleteWorkspace':
         //     deleteWorkspace(message.payload);
         //     sendResponse({ status: 'success' });
@@ -86,55 +113,97 @@ async function createNewWorkspace(title: string, currentSpace: Workspace, spaces
 }
 
 
-async function switchWorkspace(newWorkspace: Workspace, spaces: Workspaces, currentSpace: Workspace) {
-    try {
-        const lastActiveWorkspace = {...currentSpace, isCurrent: false};
-        const tabIdsToRemove = Object.values(lastActiveWorkspace.tabs)
-            .map(tab => tab.id)
-            .filter((id): id is number => id !== undefined);
+async function switchWorkspace(newWorkspace: Workspace | number, spaces: Workspaces, currentSpace: Workspace) {
 
-        currentSpace = {...newWorkspace, isCurrent: true};
-        spaces[currentSpace.id] = currentSpace;
-        spaces[lastActiveWorkspace.id] = lastActiveWorkspace;
-
-        await loadWorkspaceTabs(newWorkspace, currentSpace);
-        await chrome.storage.local.set({
-            workspaces: spaces,
-            lastActiveWorkspaceId: currentSpace.id
-        });
-
-        await chrome.tabs.remove(tabIdsToRemove);
-        // console.log('Switched to workspace:', currentSpace);
-        return {newSpaces: spaces, newCurrentSpace: currentSpace};
-    } catch (error) {
-        console.error('Error switching workspace:', error);
-        throw new Error('Failed to switch workspaces.');
+    if (typeof newWorkspace === 'number') {
+        newWorkspace = spaces[newWorkspace];
     }
+    console.log("Will switch to workspace: ", newWorkspace, "\n", "Current workspace: ", currentSpace);
+
+    const lastActiveWorkspace = {...currentSpace, isCurrent: false};
+
+    const newActiveWorkspace = {...newWorkspace, isCurrent: true};
+    const {newTabs, newGroups} = await loadWorkspaceTabs(newActiveWorkspace);
+    if (newTabs && newGroups) {
+        newActiveWorkspace.tabs = newTabs;
+        newActiveWorkspace.groups = newGroups;
+    }
+
+    console.log("Has Switched to workspace: ", newActiveWorkspace, "\n", "From workspace: ", lastActiveWorkspace);
+
+    const newSpaces = {...spaces};
+    newSpaces[newActiveWorkspace.id] = newActiveWorkspace;
+    newSpaces[lastActiveWorkspace.id] = lastActiveWorkspace;
+
+    console.log("Has Changed Workspaces to: ", newSpaces, "\n", "From ", spaces);
+
+    await chrome.storage.local.set({
+        workspaces: newSpaces,
+        lastActiveWorkspaceId: newActiveWorkspace.id
+    });
+
+    // const tabIdsToRemove = convertWorkspaceToMessage(lastActiveWorkspace).tabs
+    //     .map((tab) => tab.id)
+    //     .filter((id): id is number => id !== undefined);
+
+    // await chrome.tabs.create({url: "chrome://newtab", active: true});
+
+    // for (const tab of tabIdsToRemove) {
+    //     console.log("Will remove tab: ", tab);
+    //     await chrome.tabs.remove(tab);
+    // }
+    return {newSpaces: newSpaces, newCurrentSpace: newActiveWorkspace};
+    // if (newWorkspace.isCurrent) return {newSpaces: spaces, newCurrentSpace: currentSpace};
+    //
+    //
+    // const lastActiveWorkspace = {...currentSpace, isCurrent: false};
+    // const tabIdsToRemove = convertWorkspaceToMessage(lastActiveWorkspace).tabs
+    //     .map((tab) => tab.id)
+    //     .filter((id): id is number => id !== undefined);
+    //
+    // currentSpace = {...newWorkspace, isCurrent: true};
+    // currentSpace.isCurrent = true;
+    //
+    // const newSpaces = {...spaces};
+    // newSpaces[currentSpace.id] = currentSpace;
+    // newSpaces[lastActiveWorkspace.id] = lastActiveWorkspace;
+    //
+    // await loadWorkspaceTabs(newWorkspace, currentSpace);
+    //
+    // await chrome.storage.local.set({
+    //     workspaces: newSpaces,
+    //     lastActiveWorkspaceId: currentSpace.id
+    // });
+    // // console.log("Will remove these ",tabIdsToRemove);
+    // await chrome.tabs.remove(tabIdsToRemove);
+    // console.log('Switched to workspace:', currentSpace);
+    //
+    // return {newSpaces: newSpaces, newCurrentSpace: currentSpace};
 }
 
 
-async function loadWorkspaceTabs(workspace: Workspace, currentSpace: Workspace) {
-    try {
-        // Handle case where no tabs exist in workspace
-        if (!workspace.tabs || Object.keys(workspace.tabs).length === 0) {
-            await chrome.tabs.create({url: "chrome://newtab", active: true});
-            return;
-        }
-
-        const tabPromises = Object.values(workspace.tabs).map(tab =>
-            chrome.tabs.create({
-                url: tab.tab.url,
-                active: false
-            })
-        );
-        await Promise.all(tabPromises);
-
-        currentSpace.tabs = (await chrome.tabs.query({})).map(tab => ({id: tab.id!, tab}));
-        currentSpace.groups = await chrome.tabGroups.query({});
-
-        console.log('Loaded tabs for workspace:', workspace.title);
-    } catch (error) {
-        console.error('Error loading workspace tabs:', error);
-        throw new Error('Failed to load workspace tabs.');
+async function loadWorkspaceTabs(workspace: Workspace) {
+    // Handle case where no tabs exist in workspace
+    if (!workspace.tabs || Object.keys(workspace.tabs).length === 0) {
+        await chrome.tabs.create({url: "chrome://newtab", active: true});
+        return {newTabs: {}, newGroups: []};
     }
+
+    Object.values(workspace.tabs).map(async (tab) => {
+            if (!checkIrrelevantTabs(tab.tab)) {
+                await chrome.tabs.create({
+                    url: tab.tab.url,
+                    active: false
+                })
+            }
+        }
+    );
+
+    const newTabs = (await chrome.tabs.query({}))
+        .map(tab => ({id: tab.id!, tab}))
+        .filter(tab => !checkIrrelevantTabs(tab.tab));
+    const newGroups = await chrome.tabGroups.query({});
+    await chrome.tabs.create({url: "chrome://newtab", active: true});
+
+    return {newTabs, newGroups};
 }
