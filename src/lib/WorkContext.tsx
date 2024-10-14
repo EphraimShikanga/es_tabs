@@ -39,7 +39,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
                 if (response!.workspaces && response!.currentWorkspace) {
                     setWorkspaces(response.workspaces);
                     setCurrentWorkspace(response.currentWorkspace);
-                    console.log(response.currentWorkspace);
+                    console.log("current from bg: ", response.currentWorkspace);
                 }
             });
         } catch (error) {

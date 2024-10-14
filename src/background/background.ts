@@ -22,14 +22,12 @@ import {
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTimeout: 20000,
+    hibernationTimeout: 60000,
     lastAccessedThreshold: 600000,
-    closeTabAfterDuration: 10000,
+    closeTabAfterDuration: 60000 * 5,
     navigateToAlreadyOpenTab: true
 };
-
-
-let closedTabsStorage: ClosedTabs = {};
+const closedTabsStorage: ClosedTabs = {};
 
 // Initialize the extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -56,8 +54,14 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Handle messages from the popup UI
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    handleMessaging(config,  currentSpace, spaces, message, _sender, sendResponse);
-    return true;
+    handleMessaging(config, currentSpace, spaces, message, _sender, sendResponse).then((result) => {
+            if (result) {
+                currentSpace = result.newCurrentSpace;
+                spaces = result.newSpaces;
+            }
+            return true;
+        }
+    );
 });
 
 
@@ -77,7 +81,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     await collapseAllGroups();
     startInactivityTimer(tab.id!, config.hibernationTimeout!);
     // await groupTabs(tab, currentSpace);
-    console.log(spaces);
+    // console.log(spaces);
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
