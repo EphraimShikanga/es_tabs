@@ -11,12 +11,9 @@ export interface Workspace {
     isCurrent: boolean;
 }
 
-export interface Tab {
-    id: number;
-    tab: chrome.tabs.Tab;
-}
-export type Tabs = Record<number, Tab>;
+
 export type Workspaces = Record<number, Workspace>;
+export type ClosedTabs = Record<number, chrome.tabs.Tab>;
 
 export const defaultTab: chrome.tabs.Tab = {
     selected: true,
@@ -118,6 +115,9 @@ async function hibernateTab(tabId: number) {
     if (activeTab && activeTab.id === tabId) {
         return;
     }
+    if (checkIrrelevantTabs(activeTab)) {
+        return;
+    }
     if (tabInactivityTimers.has(tabId)) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
@@ -151,6 +151,5 @@ export function checkIrrelevantTabs(tab: chrome.tabs.Tab): boolean {
         'chrome-search://',
         'about:'
     ];
-
     return irrelevantPrefixes.some(prefix => tab.url?.startsWith(prefix));
 }

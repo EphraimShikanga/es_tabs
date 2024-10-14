@@ -1,5 +1,5 @@
 import {
-    checkIrrelevantTabs,
+    checkIrrelevantTabs, ClosedTabs,
     collapseAllGroups,
     Config,
     debounce,
@@ -21,8 +21,9 @@ import ColorEnum = chrome.tabGroups.ColorEnum;
 let config: Config = {
     removeFromGroupOnDomainChange: true,
     hibernationTimeout: 600000,
-    lastAccessedThreshold: 600000
+    lastAccessedThreshold: 20000
 };
+const closedTabsStorage: ClosedTabs = {};
 let currentExpandedGroupId: number | null = null;
 let tabCreationBuffer: chrome.tabs.Tab[] = [];
 let isProcessingBuffer = false;
@@ -432,13 +433,23 @@ async function groupTabs(tab: chrome.tabs.Tab) {
     }
 }
 
-// async function cleanTabs(tab: chrome.tabs.Tab) {
-//     try {
-//         if(tab.lastAccessed! < Date.now() - config.hibernationTime) {
-//             await chrome.tabs.remove(tab.id!);
-//         }
-//     } catch (error) {
-//         console.error('Error cleaning tabs:', error);
-//     }
-// }
+async function checkTabsForInactivity(threshold: number) {
+    console.log("Starting inactivity check");
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+        if (!tab.active) {
+            const elapsedTime = Date.now() - tab.lastAccessed!;
+            console.log("lastAccessed", elapsedTime);
+            if (elapsedTime > threshold) {
+                chrome.tabs.remove(tab.id!, () => {
+                    closedTabsStorage[tab.id!] = tab;
+                    currentSpace.tabs.filter(t => t.id !== tab.id);
+                });
+            }
+        }
+    }
+}
 
+setInterval(async () => {
+    await checkTabsForInactivity(config.lastAccessedThreshold!);
+}, 30000);
