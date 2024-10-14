@@ -11,8 +11,9 @@ import {
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTimeout: 600000,
-    lastAccessedThreshold: 600000
+    hibernationTimeout: 3000,
+    lastAccessedThreshold: 600000,
+    navigateToAlreadyOpenTab: true
 };
 
 // Initialize the extension
@@ -67,23 +68,37 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab, config,currentSpace);
-        Object.values(currentSpace.tabs).forEach((storedtab) => {
-            console.log("hello");
-            if (storedtab.tab.url === tab.url) {
-                console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
-                chrome.tabs.update(storedtab.id, {active: true}, async () => {
-                    console.log('Tab already exists, navigating to it');
-                    await chrome.tabs.remove(tabId);
-                    return;
-                });
-            }
-        });
+        if(config.navigateToAlreadyOpenTab){
+            Object.values(currentSpace.tabs).forEach((storedtab) => {
+                console.log("hello");
+                if (storedtab.tab.url === tab.url && tab.url !== undefined) {
+                    console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
+                    chrome.tabs.update(storedtab.id, {active: true}, async () => {
+                        console.log('Tab already exists, navigating to it');
+                        await chrome.tabs.remove(tabId);
+                        return;
+                    });
+                }
+            });
+        }
 
         currentSpace.tabs[tabId] = {id:tabId, tab:tab};
         currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
         currentSpace.groups = await chrome.tabGroups.query({})
         startInactivityTimer(tabId, config.hibernationTimeout!);
     }
+});
+
+chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
+    if (currentSpace.tabs[removedTabId]) {
+        currentSpace.tabs[removedTabId].id = addedTabId;
+    }
+    if (tabGroupMap[removedTabId]) {
+        tabGroupMap[addedTabId] = tabGroupMap[removedTabId];
+        delete tabGroupMap[removedTabId];
+    }
+    await updateGroups(addedTabId, currentSpace, config);
+    startInactivityTimer(addedTabId, config.hibernationTimeout!);
 });
 
 // Monitor when a tab is ungrouped and reset currentExpandedGroupId if it was the expanded group
