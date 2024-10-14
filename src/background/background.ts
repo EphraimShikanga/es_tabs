@@ -69,35 +69,44 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab, config,currentSpace);
-        if(config.navigateToAlreadyOpenTab){
-            Object.values(currentSpace.tabs).forEach((storedtab) => {
-                console.log("hello");
-                if (storedtab.tab.url === tab.url && tab.url !== undefined && !checkIrrelevantTabs(storedtab.tab)) {
-                    console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
-                    chrome.tabs.remove(storedtab.id);
-                    chrome.tabs.update(tabId, {active: true});
-                    currentSpace.tabs[tabId] = {id:tabId, tab:tab};
-                }
-            });
-        }
+        // if(config.navigateToAlreadyOpenTab){
+        //     Object.values(currentSpace.tabs).forEach((storedtab) => {
+        //         console.log("hello");
+        //         if (storedtab.tab.url === tab.url && tab.url !== undefined && !checkIrrelevantTabs(storedtab.tab)) {
+        //             console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
+        //             chrome.tabs.remove(storedtab.id);
+        //             chrome.tabs.update(tabId, {active: true});
+        //             delete currentSpace.tabs[storedtab.id];
+        //             // currentSpace.tabs[tabId] = {id:tabId, tab:tab};
+        //             return;
+        //         }
+        //     });
+        // }
+        console.log("After",currentSpace);
 
         currentSpace.tabs[tabId] = {id:tabId, tab:tab};
-        currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
+        // currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
         currentSpace.groups = await chrome.tabGroups.query({})
         startInactivityTimer(tabId, config.hibernationTimeout!);
     }
 });
 
 chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
-    if (currentSpace.tabs[removedTabId]) {
-        currentSpace.tabs[removedTabId].id = addedTabId;
+    for (const storedtab of Object.values(currentSpace.tabs)) {
+        if (storedtab.id === removedTabId) {
+            storedtab.id = addedTabId;
+            currentSpace.tabs[addedTabId] = storedtab;
+            delete currentSpace.tabs[removedTabId];
+            break;
+        }
     }
+
     if (tabGroupMap[removedTabId]) {
         tabGroupMap[addedTabId] = tabGroupMap[removedTabId];
         delete tabGroupMap[removedTabId];
     }
-    await updateGroups(addedTabId, currentSpace, config);
-    startInactivityTimer(addedTabId, config.hibernationTimeout!);
+    // await updateGroups(addedTabId, currentSpace, config);
+    // startInactivityTimer(addedTabId, config.hibernationTimeout!);
 });
 
 // Monitor when a tab is ungrouped and reset currentExpandedGroupId if it was the expanded group
