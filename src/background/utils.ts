@@ -1,6 +1,7 @@
 // utils for the background script
 
 import {
+    ClosedTabs,
     Config,
     currentExpandedGroupId,
     DEBOUNCE_DELAY,
@@ -72,7 +73,6 @@ export async function collapseAllGroups() {
 // Function to hibernate a tab
 async function hibernateTab(tabId: number) {
     const [activeTab] = await chrome.tabs.query({active: true});
-    console.log("hibernating tab", tabId);
     if (activeTab && activeTab.id === tabId) {
         return;
     }
@@ -80,13 +80,32 @@ async function hibernateTab(tabId: number) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
     chrome.tabs.discard(tabId, () => {
+        console.log("hibernated tab", tabId);
         tabInactivityTimers.delete(tabId);
     });
 }
 
+// async function updateGroupColors() {
+//     const groups = await chrome.tabGroups.query({});
+//
+//     for (const group of groups) {
+//         const tabs = await chrome.tabs.query({ groupId: group.id });
+//         const allHibernated = tabs.every(tab => tab.discarded);
+//
+//         if (allHibernated) {
+//             chrome.tabGroups.update(group.id, { color: 'grey' }); // Change to grey
+//         } else {
+//             chrome.tabGroups.update(group.id, { color: 'default' }); // Reset to default or another color
+//         }
+//     }
+// }
+//
+// // Run the check periodically
+// setInterval(updateGroupColors, 60000);
+
 // Start or reset the inactivity timer for a tab
 export function startInactivityTimer(tabId: number, inactivityLimit: number) {
-    console.log("hibernationTimeout", inactivityLimit);
+    // console.log("hibernationTimeout", inactivityLimit);
     if (tabInactivityTimers.has(tabId)) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
@@ -276,4 +295,21 @@ export async function handleGroupRemoval(groupId: number, currentSpace: Workspac
         currentExpandedGroupId["group"] = null;
     }
     currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== groupId);
+}
+
+export async function checkTabsForInactivity(threshold: number, storage: ClosedTabs, currentSpace: Workspace) {
+    console.log("Starting inactivity check");
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+        if (!tab.active) {
+            const elapsedTime = Date.now() - tab.lastAccessed!;
+            console.log("lastAccessed", elapsedTime);
+            if (elapsedTime > threshold) {
+                chrome.tabs.remove(tab.id!, () => {
+                    storage[tab.id!] = tab;
+                    delete currentSpace.tabs[tab.id!];
+                });
+            }
+        }
+    }
 }

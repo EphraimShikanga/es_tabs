@@ -5,6 +5,7 @@ export type MessageType = 'updateConfig' | 'fetchTabs' | 'createNewWorkspace' |
     'fetchWorkspaces' | 'switchWorkspace' | 'deleteWorkspace';
 export type Tabs = Record<number, Tab>;
 export type Workspaces = Record<number, Workspace>;
+export type ClosedTabs = Record<number, chrome.tabs.Tab>;
 
 export interface Workspace {
     id: number;
@@ -29,6 +30,7 @@ export interface Config {
     hibernationTimeout?: number;
     lastAccessedThreshold?: number;
     navigateToAlreadyOpenTab: boolean;
+    closeTabAfterDuration: number;
 }
 
 // export interface WorkspaceMessage {
@@ -56,8 +58,9 @@ export const defaultTab: chrome.tabs.Tab = {
 };
 export const domainGroupMap: { [domain: string]: number } = {};
 export const tabGroupMap: { [tabId: number]: number } = {};
-export const DEBOUNCE_DELAY = 500;
 export const currentExpandedGroupId: {[group: string]: number | null} = { "group": null };
 
+export const DEBOUNCE_DELAY = 500;
+export const INACTIVITY_THRESHOLD = 20000;
 
 

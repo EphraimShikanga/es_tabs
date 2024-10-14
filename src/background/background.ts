@@ -1,6 +1,15 @@
-import {Config, DEBOUNCE_DELAY, tabGroupMap, Workspace, Workspaces} from "@/background/types.ts";
+import {
+    ClosedTabs,
+    Config,
+    DEBOUNCE_DELAY,
+    INACTIVITY_THRESHOLD,
+    tabGroupMap,
+    Workspace,
+    Workspaces
+} from "@/background/types.ts";
 import {handleMessaging, loadWorkspaces} from "@/background/workspace.ts";
 import {
+    checkTabsForInactivity,
     collapseAllGroups,
     debouncedTabUpdate,
     handleGroupRemoval,
@@ -13,10 +22,14 @@ import {
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTimeout: 30000,
+    hibernationTimeout: 20000,
     lastAccessedThreshold: 600000,
+    closeTabAfterDuration: 10000,
     navigateToAlreadyOpenTab: true
 };
+
+
+let closedTabsStorage: ClosedTabs = {};
 
 // Initialize the extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -80,22 +93,10 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
                 });
             }
             await chrome.tabs.update(tabId, {active: true});
-            // Object.values(currentSpace.tabs).forEach((storedtab) => {
-            //
-            //     if (storedtab.tab.url === tab.url && tab.url !== undefined && !checkIrrelevantTabs(storedtab.tab)) {
-            //         console.log("hello from: ", storedtab.tab.url, "to", changeInfo.url);
-            //         // chrome.tabs.remove(storedtab.id);
-            //         chrome.tabs.update(storedtab.id, {active: true});
-            //         // delete currentSpace.tabs[storedtab.id];
-            //         // currentSpace.tabs[tabId] = {id:tabId, tab:tab};
-            //         return;
-            //     }
-            // });
         }
-        console.log("After", currentSpace);
+        // console.log("After", currentSpace);
 
         currentSpace.tabs[tabId] = {id: tabId, tab: tab};
-        // currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
         currentSpace.groups = await chrome.tabGroups.query({})
         startInactivityTimer(tabId, config.hibernationTimeout!);
     }
@@ -141,3 +142,10 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 chrome.tabGroups.onRemoved.addListener(async (group) => {
     await handleGroupRemoval(group.id, currentSpace);
 });
+
+setTimeout(async () => {
+    await checkTabsForInactivity(config.closeTabAfterDuration, closedTabsStorage, currentSpace);
+    // await collapseAllGroups();
+    // await updateGroups(-1, currentSpace, config);
+    // console.log('Groups updated');
+}, INACTIVITY_THRESHOLD);
