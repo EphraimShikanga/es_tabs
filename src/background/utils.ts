@@ -76,6 +76,9 @@ async function hibernateTab(tabId: number) {
     if (activeTab && activeTab.id === tabId) {
         return;
     }
+    if (checkIrrelevantTabs(activeTab)) {
+        return;
+    }
     if (tabInactivityTimers.has(tabId)) {
         clearTimeout(tabInactivityTimers.get(tabId)!);
     }
@@ -131,6 +134,18 @@ export function checkIrrelevantTabs(tab: chrome.tabs.Tab): boolean {
     ];
     return irrelevantPrefixes.some(prefix => tab.url?.startsWith(prefix));
 }
+
+export function convertWorkspaceToMessage(workspace: Workspace): Omit<Workspace, 'tabs'> & { tabs: chrome.tabs.Tab[] } {
+    // Extracting the chrome.tabs.Tab objects from the Record and putting them into an array
+    const tabsArray = Object.values(workspace.tabs).map(tabRecord => tabRecord.tab);
+
+    // Return a new workspace object with the tabs array instead of the Record
+    return {
+        ...workspace,
+        tabs: tabsArray
+    };
+}
+
 
 export const updateConfig = debounce(async (oldConfig: Config, newConfig: Config) => {
     try {
