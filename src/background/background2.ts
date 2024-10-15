@@ -82,6 +82,7 @@ chrome.runtime.onStartup.addListener(async () => {
             if (data.workspaces && data.lastActiveWorkspaceId) {
                 spaces = data.workspaces;
                 currentSpace = spaces[data.lastActiveWorkspaceId];
+                await loadWorkspaceTabs(currentSpace);
                 console.log('Workspaces loaded from storage:', spaces, 'Current workspace:', currentSpace);
             } else {
                 console.log('No workspaces found in storage, initializing with default workspace');
