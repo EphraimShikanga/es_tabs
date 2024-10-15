@@ -66,6 +66,7 @@ export interface Config {
     removeFromGroupOnDomainChange?: boolean;
     hibernationTimeout?: number;
     lastAccessedThreshold?: number;
+    navigateToAlreadyOpenTab: boolean;
 }
 
 export interface Message<T = any> {

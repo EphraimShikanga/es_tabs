@@ -23,7 +23,8 @@ import ColorEnum = chrome.tabGroups.ColorEnum;
 let config: Config = {
     removeFromGroupOnDomainChange: true,
     hibernationTime: 20000,
-    lastAccessedThreshold: 600000
+    lastAccessedThreshold: 600000,
+    navigateToAlreadyOpenTab: true
 };
 const closedTabsStorage: ClosedTabs = {};
 let currentExpandedGroupId: number | null = null;
@@ -315,6 +316,17 @@ async function processTabBatch(tabs: chrome.tabs.Tab[]) {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab);
+        if (config.navigateToAlreadyOpenTab) {
+            const openedSimilarTabs = await chrome.tabs.query({url: tab.url});
+            if (openedSimilarTabs.length > 1) {
+                openedSimilarTabs.forEach((openedTab) => {
+                    if (openedTab.id !== tabId) {
+                        chrome.tabs.remove(openedTab.id!);
+                    }
+                });
+            }
+            await chrome.tabs.update(tabId, {active: true});
+        }
         currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
         currentSpace.tabs.push(tab);
         currentSpace.groups = currentSpace.groups.filter((group) => group.id !== tab.groupId);
