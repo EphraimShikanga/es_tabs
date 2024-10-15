@@ -1,10 +1,12 @@
 import {
-    checkIrrelevantTabs, ClosedTabs,
+    checkIrrelevantTabs,
+    ClosedTabs,
     collapseAllGroups,
     Config,
     debounce,
     defaultTab,
-    domainGroupMap, getDomainColor,
+    domainGroupMap,
+    getDomainColor,
     Message,
     sleep,
     startInactivityTimer,
@@ -234,7 +236,6 @@ async function loadWorkspaceTabs(workspace: Workspace) {
 }
 
 
-
 // Buffering tabs for batch processing and collapsing all groups when a new tab is created
 chrome.tabs.onCreated.addListener(async (tab) => {
     tabCreationBuffer.push(tab);
@@ -247,6 +248,8 @@ chrome.tabs.onCreated.addListener(async (tab) => {
         }, 500); // Adjust delay as needed
     }
     await collapseAllGroups();
+    currentSpace.groups = await chrome.tabGroups.query({});
+    currentSpace.tabs = await chrome.tabs.query({});
     startInactivityTimer(tab.id!, config.hibernationTime!);
 });
 
@@ -309,7 +312,7 @@ async function processTabBatch(tabs: chrome.tabs.Tab[]) {
     }
 }
 
-chrome.tabs.onUpdated.addListener( async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         debouncedTabUpdate(tabId, tab);
         currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
@@ -408,9 +411,15 @@ async function groupTabs(tab: chrome.tabs.Tab) {
             chrome.tabs.group({tabIds: [tab.id!], groupId}, async (group) => {
                 currentExpandedGroupId = group;
                 tabGroupMap[tab.id!] = group;
-                chrome.tabGroups.update(group, {title: domain, collapsed: false, color: (await getDomainColor(domain) as ColorEnum)}, (group) => {
+                chrome.tabGroups.update(group, {
+                    title: domain,
+                    collapsed: false,
+                    color: (await getDomainColor(domain) as ColorEnum)
+                }, (group) => {
                     currentSpace.groups.push(group);
                 });
+                currentSpace.tabs = await chrome.tabs.query({});
+
             });
         } else {
             try {
@@ -421,9 +430,14 @@ async function groupTabs(tab: chrome.tabs.Tab) {
                             domainGroupMap[domain] = group;
                             currentExpandedGroupId = group;
                             tabGroupMap[tab.id!] = group;
-                            chrome.tabGroups.update(group, {title: domain, collapsed: false, color: (await getDomainColor(domain) as ColorEnum)}, (group) => {
+                            chrome.tabGroups.update(group, {
+                                title: domain,
+                                collapsed: false,
+                                color: (await getDomainColor(domain) as ColorEnum)
+                            }, (group) => {
                                 currentSpace.groups.push(group);
                             });
+                            currentSpace.tabs = await chrome.tabs.query({});
                         });
                     }
                 });

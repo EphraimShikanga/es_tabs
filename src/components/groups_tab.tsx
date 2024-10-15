@@ -27,6 +27,10 @@ type GroupTabsProps = {
 
 const GroupTabs: React.FC<GroupTabsProps> = ({tabs}) => {
     const handleTabClick = async (tab: chrome.tabs.Tab) => {
+        if (tab.active) {
+
+            return;
+        }
         try {
             // const e = await chrome.tabs.query({url: tab.url});
             await chrome.tabs.update(tab.id!, {active: true});
