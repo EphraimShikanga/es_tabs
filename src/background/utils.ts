@@ -1,6 +1,6 @@
 // utils for the background script
 
-type MessageType = 'updateConfig' | 'fetchTabs' | 'createNewWorkspace' |
+type MessageType = 'updateConfig'| 'fetchConfig' | 'fetchTabs' | 'createNewWorkspace' |
     'fetchWorkspaces' | 'switchWorkspace' | 'deleteWorkspace' | 'fetchClosedTabs' |
 'restoreTab';
 
@@ -70,12 +70,12 @@ export async function getDomainColor(domain: string): Promise<string> {
 }
 
 export interface Config {
-    [key: string]: any;
-
-    removeFromGroupOnDomainChange?: boolean;
-    hibernationTimeout?: number;
-    lastAccessedThreshold?: number;
-    navigateToAlreadyOpenTab: boolean;
+    removeFromGroupOnDomainChange: boolean,
+    navigateToAlreadyOpenTab: boolean,
+    autoGroupTabs: boolean,
+    maxTabsPerGroup: number,
+    hibernationTime: number,
+    lastAccessedThreshold: number,
 }
 
 export interface Message<T = any> {
@@ -106,11 +106,7 @@ export function debounce<T extends (...args: any[]) => Promise<void> | void>(fun
 
 // Function to validate configuration
 export function validateConfig(newConfig: Config): boolean {
-    if (typeof newConfig.removeFromGroupOnDomainChange !== 'boolean') {
-        console.error('Invalid config: removeFromGroupOnDomainChange should be a boolean');
-        return false;
-    }
-    return true;
+    return (newConfig.hibernationTime >= 0 && newConfig.lastAccessedThreshold >= 0 && newConfig.maxTabsPerGroup >= 0);
 }
 
 // Collapse all groups
