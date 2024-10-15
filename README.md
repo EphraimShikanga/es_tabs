@@ -76,7 +76,7 @@ The project is built using Vite with TypeScript for fast and efficient developme
 
 - **App.tsx:** The main entry point for the extension’s UI components.
 - **WorkContext.tsx:** Provides context and management for workspaces and tab groups.
-- **background.ts:** The background script that handles tab and workspace management, tab grouping, and automatic tab hibernation.
+- **background.ts:** The background script that handles tab and workspace management.
 
 ## Future Plans
 
