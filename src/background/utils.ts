@@ -1,7 +1,8 @@
 // utils for the background script
 
 type MessageType = 'updateConfig' | 'fetchTabs' | 'createNewWorkspace' |
-    'fetchWorkspaces' | 'switchWorkspace' | 'deleteWorkspace';
+    'fetchWorkspaces' | 'switchWorkspace' | 'deleteWorkspace' | 'fetchClosedTabs' |
+'restoreTab';
 
 export interface Workspace {
     id: number;
@@ -14,6 +15,14 @@ export interface Workspace {
 
 export type Workspaces = Record<number, Workspace>;
 export type ClosedTabs = Record<number, chrome.tabs.Tab>;
+
+export function convertClosedTabsToList(closedTabs: ClosedTabs): chrome.tabs.Tab[] {
+    return Object.values(closedTabs);
+}
+
+export async function restoreClosedTab(tab: chrome.tabs.Tab) {
+    await chrome.tabs.create({url: tab.url});
+}
 
 export const defaultTab: chrome.tabs.Tab = {
     selected: true,

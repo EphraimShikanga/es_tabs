@@ -2,7 +2,7 @@ import {
     checkIrrelevantTabs,
     ClosedTabs,
     collapseAllGroups,
-    Config,
+    Config, convertClosedTabsToList,
     debounce,
     defaultTab,
     domainGroupMap,
@@ -22,8 +22,8 @@ import ColorEnum = chrome.tabGroups.ColorEnum;
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTime: 20000,
-    lastAccessedThreshold: 600000,
+    hibernationTime: 600000,
+    lastAccessedThreshold: 20000,
     navigateToAlreadyOpenTab: true
 };
 const closedTabsStorage: ClosedTabs = {};
@@ -131,6 +131,14 @@ chrome.runtime.onMessage.addListener(
         } else if (message.type === 'deleteWorkspace' && message.payload) {
             deleteWorkspace(message.payload).then(() => {
                 sendResponse({status: 'success'});
+            });
+        }else if (message.type === 'fetchClosedTabs') {
+            const closedTabs = convertClosedTabsToList(closedTabsStorage);
+            sendResponse({closedTabs});
+        }else if (message.type === 'restoreTab') {
+            chrome.tabs.create({url: closedTabsStorage[message.payload].url}).then(() => {
+                delete closedTabsStorage[message.payload];
+                sendResponse({status: 'success', closedTabs: convertClosedTabsToList(closedTabsStorage)});
             });
         }
 
@@ -464,7 +472,7 @@ async function checkTabsForInactivity(threshold: number) {
     console.log("Starting inactivity check");
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
-        if (!tab.active) {
+        if (!tab.active && !checkIrrelevantTabs(tab)) {
             const elapsedTime = Date.now() - tab.lastAccessed!;
             console.log("lastAccessed", elapsedTime);
             if (elapsedTime > threshold) {

@@ -8,6 +8,7 @@ import ExtensionTab from "@/components/extension_tab.tsx";
 import GroupsTab from "@/components/groups_tab.tsx";
 import WorkspaceTab from "@/components/workspace_tab.tsx";
 import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
+import ClosedTab from "@/components/closed_tab.tsx";
 
 
 function App() {
@@ -128,6 +129,7 @@ function App() {
                             <WorkspaceProvider>
                                 <WorkspaceTab value={"Workspaces"}/>
                                 <GroupsTab value={"Groups"}/>
+                                <ClosedTab value={"Closed"}/>
                             </WorkspaceProvider>
                         </TabsBody>
                     </Tabs>
