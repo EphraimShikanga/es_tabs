@@ -38,11 +38,11 @@ const updateConfig = debounce(async (newConfig: Config) => {
     if (!validateConfig(newConfig)) return;
 
     config = {...config, ...newConfig};
-    console.log('Configuration Updated:', config);
+    // console.log('Configuration Updated:', config);
 
     try {
         await chrome.storage.local.set({config});
-        console.log('Configuration saved to storage');
+        // console.log('Configuration saved to storage');
     } catch (error) {
         console.error('Failed to save configuration:', error);
     }
@@ -51,7 +51,7 @@ const updateConfig = debounce(async (newConfig: Config) => {
 // Save the configuration to chrome.storage for persistence across sessions
 chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.set({config}, () => {
-        console.log('Default configuration saved to storage');
+        // console.log('Default configuration saved to storage');
     });
 });
 
@@ -73,7 +73,7 @@ chrome.runtime.onStartup.addListener(async () => {
     chrome.storage.local.get('config', (data) => {
         if (data.config) {
             config = data.config;
-            console.log('Configuration loaded from storage:', config);
+            // console.log('Configuration loaded from storage:', config);
         }
     });
 
@@ -82,10 +82,17 @@ chrome.runtime.onStartup.addListener(async () => {
             if (data.workspaces && data.lastActiveWorkspaceId) {
                 spaces = data.workspaces;
                 currentSpace = spaces[data.lastActiveWorkspaceId];
-                await loadWorkspaceTabs(currentSpace);
-                console.log('Workspaces loaded from storage:', spaces, 'Current workspace:', currentSpace);
+                // Add a delay to ensure the workspace is set before loading tabs
+                // await sleep(1000);
+                // const urls = currentSpace.tabs.map((tab) => tab.url).filter((url): url is string => url !== undefined);
+                // for (const url of urls) {
+                //     await chrome.tabs.create({ url, active: false });
+                //     // await sleep(1000);
+                // }
+                // await loadWorkspaceTabs(currentSpace);
+                // console.log('Workspaces loaded from storage:', spaces, 'Current workspace:', currentSpace);
             } else {
-                console.log('No workspaces found in storage, initializing with default workspace');
+                // console.log('No workspaces found in storage, initializing with default workspace');
                 spaces = {
                     1: {
                         id: 1,
@@ -104,6 +111,8 @@ chrome.runtime.onStartup.addListener(async () => {
     }
 });
 
+// chrome.sessions.restore()
+
 // Message Listener to handle messages from the popup UI
 chrome.runtime.onMessage.addListener(
     (message: Message, _sender: MessageSender, sendResponse) => {
@@ -118,7 +127,7 @@ chrome.runtime.onMessage.addListener(
                 sendResponse({tabs: relevantTabs});
             });
         } else if (message.type === 'fetchWorkspaces') {
-            console.log("sending current workspace: ", currentSpace, " and all workspaces: ", spaces);
+            // console.log("sending current workspace: ", currentSpace, " and all workspaces: ", spaces);
             sendResponse({
                 workspaces: spaces, currentWorkspace: {
                     ...currentSpace,
@@ -196,7 +205,7 @@ async function createWorkspace(title: string) {
         };
         spaces[id] = workspace;
         await switchWorkspace(workspace);
-        console.log('Workspace created:', workspace, 'All workspaces:', spaces, 'Current workspace:', currentSpace);
+        // console.log('Workspace created:', workspace, 'All workspaces:', spaces, 'Current workspace:', currentSpace);
 
     } catch (e) {
         console.error('Error creating workspace:', e);
@@ -246,7 +255,7 @@ async function loadWorkspaceTabs(workspace: Workspace) {
         }
         currentSpace.tabs = await chrome.tabs.query({});
         currentSpace.groups = await chrome.tabGroups.query({});
-        console.log('Loaded tabs for workspace:', workspace.title);
+        // console.log('Loaded tabs for workspace:', workspace.title);
     } catch (error) {
         console.error('Error loading workspace tabs:', error);
     }
@@ -382,7 +391,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 // Monitor when a group is deleted and reset currentExpandedGroupId if it was the expanded group
 chrome.tabGroups.onRemoved.addListener(async (group) => {
     if (group.id === currentExpandedGroupId) {
-        console.log(`Currently expanded group ${group.id} was deleted, resetting currentExpandedGroupId.`);
+        // console.log(`Currently expanded group ${group.id} was deleted, resetting currentExpandedGroupId.`);
         currentExpandedGroupId = null;
     }
     currentSpace.groups = currentSpace.groups.filter((grp) => grp.id !== group.id);
@@ -406,7 +415,7 @@ const debouncedTabUpdate = debounce(async (tabId: number, tab: chrome.tabs.Tab) 
         if (config.removeFromGroupOnDomainChange && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
             const group = await chrome.tabGroups.get(tab.groupId).catch(() => null);
             if (!group) {
-                console.log(`Group with ID ${tab.groupId} no longer exists.`);
+                // console.log(`Group with ID ${tab.groupId} no longer exists.`);
                 return;
             }
             const tabDomain = new URL(tab.url!).hostname;
@@ -436,7 +445,7 @@ async function groupTabs(tab: chrome.tabs.Tab) {
             const groupId = domainGroupMap[domain];
             const group = await chrome.tabGroups.get(groupId).catch(() => null);
             if (!group) {
-                console.log(`Group with ID ${groupId} no longer exists.`);
+                // console.log(`Group with ID ${groupId} no longer exists.`);
                 delete domainGroupMap[domain];
                 return;
             }
@@ -481,12 +490,12 @@ async function groupTabs(tab: chrome.tabs.Tab) {
 }
 
 async function checkTabsForInactivity(threshold: number) {
-    console.log("Starting inactivity check");
+    // console.log("Starting inactivity check");
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
         if (!tab.active && !checkIrrelevantTabs(tab)) {
             const elapsedTime = Date.now() - tab.lastAccessed!;
-            console.log("lastAccessed", elapsedTime);
+            // console.log("lastAccessed", elapsedTime);
             if (elapsedTime > threshold) {
                 chrome.tabs.remove(tab.id!, () => {
                     closedTabsStorage[tab.id!] = tab;
@@ -500,3 +509,26 @@ async function checkTabsForInactivity(threshold: number) {
 setInterval(async () => {
     await checkTabsForInactivity(config.lastAccessedThreshold!);
 }, 30000);
+
+// chrome.runtime.onSuspend.addListener(async () => {
+//     try {
+//         // Save the current configuration
+//         await chrome.storage.local.set({config});
+//         console.log('Configuration saved on suspend');
+//
+//         // Save the current workspaces and the last active workspace ID
+//         await chrome.storage.local.set({
+//             workspaces: spaces,
+//             lastActiveWorkspaceId: currentSpace.id
+//         });
+//         console.log('Workspaces saved on suspend');
+//
+//         // Save the current tabs in the current workspace
+//         const tabs = await chrome.tabs.query({});
+//         currentSpace.tabs = tabs;
+//         await chrome.storage.local.set({workspaces: spaces});
+//         console.log('Tabs saved on suspend');
+//     } catch (error) {
+//         console.error('Error saving data on suspend:', error);
+//     }
+// });
