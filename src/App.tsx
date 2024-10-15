@@ -9,6 +9,7 @@ import GroupsTab from "@/components/groups_tab.tsx";
 import WorkspaceTab from "@/components/workspace_tab.tsx";
 import {WorkspaceProvider} from "@/lib/WorkContext.tsx";
 import ClosedTab from "@/components/closed_tab.tsx";
+import SettingsTab from "@/components/settings_tab.tsx";
 
 
 function App() {
@@ -62,20 +63,20 @@ function App() {
     return (
         <div className={"h-full w-full p-4"}>
             <div
-                className={" h-full w-full bg-black rounded-lg pl-0 p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
+                className={" h-full w-full bg-white rounded-lg pl-0 p-2 bg-opacity-20 backdrop-filter backdrop-blur-sm"}>
                 <div className={"pl-2 flex flex-row items-end w-full justify-between"}>
                     <div className={"bg-white/10 rounded-full flex flex-row items-end pl-2"}>
-                        <Search color="rgb(226 232 240)" size={"24px"} className={"mb-[6px]"}/>
+                        <Search color=" rgb(120 144 156 )" size={"24px"} className={"mb-[6px]"}/>
                         <Input
                             onChange={(event) => setSearchQuery(event.target.value)}
                             id={"search"}
                             type={"text"}
                             placeholder={"Search tabs..."}
-                            className={"placeholder:text-slate-200 pl-2 border-none text-lg text-slate-200 focus-visible:ring-transparent"}
+                            className={"placeholder:text-blue-gray-400 pl-2 border-none text-lg text-blue-gray-800 focus-visible:ring-transparent"}
                         />
                     </div>
                     <div
-                        className={"rounded-full h-9 w-12 flex items-center justify-center text-slate-200 bg-white/10"}>
+                        className={"rounded-full h-9 w-12 flex items-center justify-center text-blue-gray-800 bg-white/10"}>
                         <p>
                             {
                                 searchQuery.length < 1
@@ -130,6 +131,7 @@ function App() {
                                 <WorkspaceTab value={"Workspaces"}/>
                                 <GroupsTab value={"Groups"}/>
                                 <ClosedTab value={"Closed"}/>
+                                <SettingsTab value={"Settings"}/>
                             </WorkspaceProvider>
                         </TabsBody>
                     </Tabs>
