@@ -20,8 +20,8 @@ import ColorEnum = chrome.tabGroups.ColorEnum;
 // Configuration object to hold settings from the popup UI
 let config: Config = {
     removeFromGroupOnDomainChange: true,
-    hibernationTimeout: 600000,
-    lastAccessedThreshold: 20000
+    hibernationTime: 20000,
+    lastAccessedThreshold: 600000
 };
 const closedTabsStorage: ClosedTabs = {};
 let currentExpandedGroupId: number | null = null;
@@ -202,17 +202,6 @@ async function switchWorkspace(workspace: Workspace) {
         spaces[currentSpace.id] = currentSpace;
         spaces[lastActiveWorkspace.id] = lastActiveWorkspace;
 
-        // const newSpaces = spaces.map((space) => {
-        //     if (space.id === workspace.id) {
-        //         return currentSpace;
-        //     } else if (space.id === lastActiveWorkspace.id) {
-        //         return lastActiveWorkspace;
-        //     } else {
-        //         return space;
-        //     }
-        // });
-        // spaces = newSpaces;
-
         await chrome.storage.local.set({
             workspaces: spaces,
             lastActiveWorkspaceId: currentSpace.id
@@ -258,8 +247,17 @@ chrome.tabs.onCreated.addListener(async (tab) => {
         }, 500); // Adjust delay as needed
     }
     await collapseAllGroups();
-    startInactivityTimer(tab.id!, config.hibernationTime);
+    startInactivityTimer(tab.id!, config.hibernationTime!);
 });
+
+chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
+    currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== removedTabId);
+    const tab = await chrome.tabs.get(addedTabId);
+    currentSpace.tabs.push(tab);
+    currentSpace.groups = await chrome.tabGroups.query({});
+    startInactivityTimer(addedTabId, config.hibernationTime);
+});
+
 
 // Event: Collapse the current group when another group or tab outside it is clicked
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
