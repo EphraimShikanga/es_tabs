@@ -45,7 +45,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
             console.error('Error fetching workspaces: ', error);
         }
-    }, []);
+    }, [workspaces]);
 
 
     return (

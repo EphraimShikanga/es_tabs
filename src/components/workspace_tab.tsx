@@ -47,7 +47,7 @@ function TrashIcon() {
 }
 
 const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
-    const {currentWorkspace} = useWorkspace();
+    const {currentWorkspace, setWorkspaces} = useWorkspace();
 
 
     return (
@@ -95,9 +95,11 @@ const Workspace: React.FC<WorkspaceProps> = ({workspace}) => {
                         {/*eslint-disable-next-line @typescript-eslint/ban-ts-comment*/}
                         {/*@ts-expect-error*/}
                         <IconButton size={"md"} variant="text" color="blue-gray" onClick={
-                            () => {
+                            async () => {
                                 chrome.runtime.sendMessage({type: 'deleteWorkspace', payload: workspace.id}, (response) => {
-                                    if (response!.status === 'success') {
+                                    if (response!.status === 'success' && response.workspaces) {
+                                        setWorkspaces(response.workspaces);
+                                        // setCurrentWorkspace(response.currentWorkspace);
                                         console.log("clicked", response);
                                     }
                                 });

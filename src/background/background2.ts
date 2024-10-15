@@ -134,8 +134,10 @@ chrome.runtime.onMessage.addListener(
                 sendResponse({status: 'success'});
             });
         } else if (message.type === 'deleteWorkspace' && message.payload) {
-            deleteWorkspace(message.payload).then(() => {
-                sendResponse({status: 'success'});
+            deleteWorkspace(message.payload).then((result) => {
+                if (result) {
+                sendResponse({status: 'success', workspace: result.workspaces, currentWorkspace: result.currentWorkspace});
+                }
             });
         }else if (message.type === 'fetchClosedTabs') {
             const closedTabs = convertClosedTabsToList(closedTabsStorage);
@@ -170,6 +172,7 @@ async function deleteWorkspace(workspaceId: number) {
             }
             await chrome.storage.local.set({workspaces: spaces});
         }
+        return {workspaces: spaces, currentWorkspace:currentSpace};
 
     } catch (error) {
         console.error('Error deleting workspace:', error);
