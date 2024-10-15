@@ -263,6 +263,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
     await collapseAllGroups();
     currentSpace.groups = await chrome.tabGroups.query({});
     currentSpace.tabs = await chrome.tabs.query({});
+    tabGroupMap[tab.id!] = tab.groupId!;
     startInactivityTimer(tab.id!, config.hibernationTime!);
 });
 
@@ -359,11 +360,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 // Monitor when tabs are removed and check if their group has only one tab left
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+    const removedTab = currentSpace.tabs.find((tab) => tab.id === tabId);
     currentSpace.tabs = currentSpace.tabs.filter((tab) => tab.id !== tabId);
-    console.log("removed tab: ", tabId, "from: ", currentSpace.tabs);
-    const group = tabGroupMap[tabId];
+    const group = currentSpace.groups.find((group) => group.id === removedTab?.groupId);
+    console.log("Group",group);
     if (group) {
-        const tabs = await chrome.tabs.query({groupId: group});
+        const tabs = (await chrome.tabs.query({groupId: group.id}));
         if (tabs.length === 1) {
             await chrome.tabs.ungroup(tabs[0].id!);
             delete domainGroupMap[new URL(tabs[0].url!).hostname];
