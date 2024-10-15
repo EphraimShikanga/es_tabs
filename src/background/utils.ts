@@ -55,13 +55,14 @@ export async function getDomainColor(domain: string): Promise<string> {
     usedColors.add(randomColor);
 
     domainColors[domain] = randomColor;
-    await chrome.storage.local.set({ domainColors });
+    await chrome.storage.local.set({domainColors});
 
     return randomColor;
 }
 
 export interface Config {
     [key: string]: any;
+
     removeFromGroupOnDomainChange?: boolean;
     hibernationTimeout?: number;
     lastAccessedThreshold?: number;
@@ -111,18 +112,16 @@ export async function collapseAllGroups() {
 
 // Function to hibernate a tab
 async function hibernateTab(tabId: number) {
-    const [activeTab] = await chrome.tabs.query({active: true});
-    if (activeTab && activeTab.id === tabId) {
+    stopInactivityTimer(tabId);
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.active || checkIrrelevantTabs(tab) || tab.discarded) {
         return;
     }
-    if (checkIrrelevantTabs(activeTab)) {
-        return;
-    }
-    if (tabInactivityTimers.has(tabId)) {
-        clearTimeout(tabInactivityTimers.get(tabId)!);
-    }
-    chrome.tabs.discard(tabId, () => {
-        tabInactivityTimers.delete(tabId);
+
+    chrome.tabs.discard(tabId, async () => {
+        console.log("Tab hibernated", tabId);
+        // tabInactivityTimers.delete(tabId);
+        console.log(await chrome.tabs.query({}));
     });
 }
 

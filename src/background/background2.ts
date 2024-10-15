@@ -255,6 +255,9 @@ chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
     const tab = await chrome.tabs.get(addedTabId);
     currentSpace.tabs.push(tab);
     currentSpace.groups = await chrome.tabGroups.query({});
+    delete tabGroupMap[removedTabId];
+    tabGroupMap[addedTabId] = tab.groupId!;
+    stopInactivityTimer(removedTabId);
     startInactivityTimer(addedTabId, config.hibernationTime);
 });
 
