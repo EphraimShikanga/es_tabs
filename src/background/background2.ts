@@ -2,7 +2,8 @@ import {
     checkIrrelevantTabs,
     ClosedTabs,
     collapseAllGroups,
-    Config, convertClosedTabsToList,
+    Config,
+    convertClosedTabsToList,
     debounce,
     defaultTab,
     domainGroupMap,
@@ -73,6 +74,69 @@ chrome.runtime.onStartup.addListener(async () => {
             config = data.config;
             console.log('Configuration loaded from storage:', config);
         }
+        chrome.runtime.onMessage.addListener(
+            (message: Message, _sender: MessageSender, sendResponse) => {
+                switch (message.type) {
+                    case 'updateConfig':
+                        if (message.payload) {
+                            updateConfig(message.payload);
+                            sendResponse({status: 'success'});
+                        }
+                        break;
+                    case 'fetchTabs':
+                        chrome.tabs.query({}, (tabs) => {
+                            const relevantTabs = tabs.filter(tab => !checkIrrelevantTabs(tab));
+                            sendResponse({tabs: relevantTabs});
+                        });
+                        break;
+                    case 'fetchWorkspaces':
+                        console.log("sending current workspace: ", currentSpace, " and all workspaces: ", spaces);
+                        sendResponse({
+                            workspaces: spaces, currentWorkspace: {
+                                ...currentSpace,
+                                tabs: currentSpace.tabs.filter(tab => !checkIrrelevantTabs(tab))
+                            }
+                        });
+                        break;
+                    case 'createNewWorkspace':
+                        if (message.payload) {
+                            createWorkspace(message.payload).then(() => {
+                                sendResponse({status: 'success'});
+                            });
+                        }
+                        break;
+                    case 'switchWorkspace':
+                        if (message.payload) {
+                            switchWorkspace(message.payload).then(() => {
+                                sendResponse({status: 'success'});
+                            });
+                        }
+                        break;
+                    case 'deleteWorkspace':
+                        if (message.payload) {
+                            deleteWorkspace(message.payload).then(() => {
+                                sendResponse({status: 'success'});
+                            });
+                        }
+                        break;
+                    case 'fetchClosedTabs': {
+                        const closedTabs = convertClosedTabsToList(closedTabsStorage);
+                        sendResponse({closedTabs});
+                        break;
+                    }
+                    case 'restoreTab':
+                        chrome.tabs.create({url: closedTabsStorage[message.payload].url}).then(() => {
+                            delete closedTabsStorage[message.payload];
+                            sendResponse({status: 'success', closedTabs: convertClosedTabsToList(closedTabsStorage)});
+                        });
+                        break;
+                    default:
+                        break;
+                }
+
+                return true; // Keep the message channel open for asynchronous responses
+            }
+        );
     });
 
     try {
@@ -132,10 +196,10 @@ chrome.runtime.onMessage.addListener(
             deleteWorkspace(message.payload).then(() => {
                 sendResponse({status: 'success'});
             });
-        }else if (message.type === 'fetchClosedTabs') {
+        } else if (message.type === 'fetchClosedTabs') {
             const closedTabs = convertClosedTabsToList(closedTabsStorage);
             sendResponse({closedTabs});
-        }else if (message.type === 'restoreTab') {
+        } else if (message.type === 'restoreTab') {
             chrome.tabs.create({url: closedTabsStorage[message.payload].url}).then(() => {
                 delete closedTabsStorage[message.payload];
                 sendResponse({status: 'success', closedTabs: convertClosedTabsToList(closedTabsStorage)});
